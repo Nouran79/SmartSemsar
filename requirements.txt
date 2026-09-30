@@ -1,0 +1,6 @@
+google-generativeai
+pillow
+pandas
+opendatasets
+chromadb
+python-dotenv
