@@ -9,9 +9,9 @@ data_pipeline/data
 
 # تجاهل الملفات المضغوطة والصور والـ CSV
 *.zip
-*.png
-*.jpg
-*.csv
+# *.png
+# *.jpg
+# *.csv
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
