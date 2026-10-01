@@ -1,12 +1,11 @@
-data_pipeline/data
+data_pipeline
 *.zip
 *.tar
 *.db
 *.sqlite3
 chroma_db/
 .env
-**/data/
-data_pipeline/data/
+data_pipeline/data
 
 # تجاهل الملفات المضغوطة والصور والـ CSV
 *.zip
