@@ -1,13 +1,22 @@
 import pandas as pd
 import numpy as np
+import os
 
-def merge_pf_and_cubicasa(pf_csv_path, cubicasa_csv_path, output_merged_path="final_merged_dataset.csv"):
+def merge_datasets():
     print("📖 جاري تحميل بيانات Property Finder و CubiCasa...")
-    df_pf = pd.read_csv(pf_csv_path)
-    df_cc = pd.read_csv(cubicasa_csv_path)
+    
+    pf_path = "./data_pipeline/data/cleaned_all_egypt.csv"
+    cc_path = "./data_pipeline/data/cubicasa_parsed.csv"
+    
+    if not os.path.exists(pf_path) or not os.path.exists(cc_path):
+        print("❌ خطأ: تأكدي من وجود الملفين داخل فولدر ./data/")
+        return
+
+    df_pf = pd.read_csv(pf_path)
+    df_cc = pd.read_csv(cc_path)
     
     merged_rows = []
-    print("🔗 جاري مطابقة كل عقار مع أنسب مخطط معماري وصورته...")
+    print("🔗 جاري المطابقة بناءً على عدد الغرف، الحمامات، وأقرب مساحة...")
     
     for _, prop in df_pf.iterrows():
         p_beds = int(prop['bedrooms'])
@@ -30,7 +39,8 @@ def merge_pf_and_cubicasa(pf_csv_path, cubicasa_csv_path, output_merged_path="fi
         size_diffs = np.abs(candidates['svg_area_sqm'] - p_area)
         best_match = candidates.loc[size_diffs.idxmin()]
         
-        # دمج البيانات
+        image_name = str(best_match.get('local_image_name', f"{best_match['cubicasa_id']}.png"))
+        
         merged_rows.append({
             'property_id': prop['property_id'],
             'title': prop['title'],
@@ -40,23 +50,19 @@ def merge_pf_and_cubicasa(pf_csv_path, cubicasa_csv_path, output_merged_path="fi
             'pf_bathrooms': p_baths,
             'pf_area_sqm': p_area,
             
-            # بيانات المخطط والصورة من CubiCasa
+            # البيانات المستخرجة والمطابقة من CubiCasa
             'cubicasa_id': best_match['cubicasa_id'],
-            'matched_svg_path': best_match['svg_path'],
-            'matched_image_path': best_match['image_path'],
             'svg_bedrooms': best_match['svg_bedrooms'],
             'svg_bathrooms': best_match['svg_bathrooms'],
             'svg_area_sqm': best_match['svg_area_sqm'],
-            'area_diff_sqm': round(abs(best_match['svg_area_sqm'] - p_area), 2)
+            'area_diff_sqm': round(abs(best_match['svg_area_sqm'] - p_area), 2),
+            'image_path': f"./data_pipeline/data/matched_images/{image_name}"
         })
         
     df_merged = pd.DataFrame(merged_rows)
-    df_merged.to_csv(output_merged_path, index=False, encoding='utf-8-sig')
-    print(f"🎉 تم دمج الداتاسيت بنجاح وحفظ الملف النهائي في: {output_merged_path}")
+    output_path = "./data_pipeline/data/final_merged_dataset.csv"
+    df_merged.to_csv(output_path, index=False, encoding='utf-8-sig')
+    print(f"🎉 تم الدمج بنجاح! الملف النهائي جاهز في: {output_path}")
 
 if __name__ == "__main__":
-    merge_pf_and_cubicasa(
-        pf_csv_path="./data/property_finder_data.csv",
-        cubicasa_csv_path="cubicasa_parsed.csv",
-        output_merged_path="final_merged_dataset.csv"
-    )
+    merge_datasets()
