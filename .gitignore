@@ -1,9 +1,18 @@
-data_pipeline/floorplans_raw/
+data_pipeline/data
+*.zip
+*.tar
 *.db
 *.sqlite3
 chroma_db/
 .env
+**/data/
+data_pipeline/data/
 
+# تجاهل الملفات المضغوطة والصور والـ CSV
+*.zip
+*.png
+*.jpg
+*.csv
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
