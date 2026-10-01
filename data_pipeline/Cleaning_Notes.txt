@@ -1,0 +1,109 @@
+## Cleaning Notes ==> Done
+
+duplicated = np.int64(0) --> ['title'] freq 235 'Zero Commission/Moving-Good Location-Lowest Price' --> Done
+                              with title    = 4,279 rows (6.8%) -> undercount (brokers reword titles)
+                              without title = 20,028 rows (31.8%)
+                              evidence: CFC 96sqm office listed 51 times under 43 different titles
+                              DECISION: collapse identical offers, keep listing_count as new variable
+                              13,675 removed / 49,302 distinct offers =>> Done
+                              KEY FINDING: rentals duplicated 3x more than sales (30.5% Vs 11.3%)
+
+id Types str --> Two Datasets / No duplicates / Two valid identifier = No Action 
+
+title --> marketing text, not analytical / use to correct other columns == No Action
+
+price Outliers (min 1,000 / max 1,000,000,000) --> [RENT] = Done
+                                                1. Sale prices in rent column (68)
+                                                >4,000 EGP/m2/month + "for sale" in title --> reclassified to sell
+                                                flag: period_source
+
+                                                2. Seasonal/yearly coastal rents as monthly (103) --> removed
+                                                North Coast = 0.5% of rentals but 33% of extremes (66x)
+
+                                                3. Price quoted per m2, not total (929) --> price x size   [main issue]
+                                                their price median 1,250 = valid offices' per-m2 rent 1,000
+                                                81% Office Space. Guard: only if price in 100-4,000
+                                                (without guard, 24 rows became absurd totals)
+                                                flag: price_unit_fixed
+
+                                                4. Daily rates + USD prices (24) --> removed
+                                                currency column says EGP for all rows - not reliable
+
+                                                   [SALE] = Done
+                                                5. Price/m2 outside 6,000-450,000 (259) --> removed
+                                                all 94 below the floor were in Sheikh Zayed / New Cairo
+                                                = 10x below market, so errors not cheap areas
+
+                                                REJECTED: extracting prices from titles - 2% match only
+                                                ("m" means metres, not million). Down-payment theory also
+                                                tested and rejected (DP listings had HIGHER price/m2).
+                                                
+                                                6. value_per_sqm  --> price / size. Unit depends on price_period:
+                                                sell = EGP/m2 | monthly = EGP/m2/month. NEVER mix.
+
+currency (unique) = 1 EGP --> drop Column = Done
+
+price_type 3 str Values need to be Checked ---> rent_price = 34059 / sale_price = 28918 / suspicious_low = 8
+                                        drop raw = suspicious_low = 8 = Done
+
+price_raw_value duplicate price column with a small difference --> after drop raw = suspicious_low Column be duplicate with price
+                                    drop Column = Done
+
+property_type (32 Types) from [Farm / Land] Not in our Domain --> drop raw = Done
+                - market_sector [New Column] from 'property_type' --> Residential / Administrative / Commercial / Medical / Other
+                  'Other' = Whole Building + Bulk Sale/Rent Unit - not a real*         
+
+location ==> composite string, inconsistent depth (2 to 5 parts)
+             split from the RIGHT (fixed anchor) into 4 levels:
+             region / city / district / compound
+             region 18 | city 92 | district 661 | compound 2,568
+             882 rows (depth 2) have no district/compound
+             NOTE: "North Coast" is a market region not a governorate
+                   (Matrouh shows only 5 listings because of this)
+                   -> column named `region` not `governorate`
+         --> New Column 'distance_to_center_km' (Tahrir, great-circle) = Done
+
+latitude / longitude min == 0.00 (X = 47) ---> fixed Done 
+
+images List of (Pic.) ---> drop Column = Done
+
+bedrooms (Null) ?? --> 10,389 Nan [9,029 non-residential: shops, offices, land] == Nan ==> 0
+                                  [1,353 fixed by median (property_type x size band)] = Done 
+                                  [7 Bungalow No Data about bedrooms] == Nan ==> 0
+
+bathrooms (Null) ?? --> 2,756 Nan [196 (lands & Farms)] == Nan
+                                  [2,560 fixed by median (property_type x size band)] = Done
+                                  note: unlike bedrooms, missing bathrooms are NOT structural in shops/offices
+                                  (Shop: 98.4% missing bedrooms x 27% missing bathrooms)
+
+size (Null / min = 1 & max = 2,520,000) ## ---> START: min 1 / max 2,520,000 / std 14,600
+                                                removed Land + Farm (188) -> max dropped to 400,200
+                                                removed Warehouse + Factory (416) - different pricing drivers
+                                                removed size > 3,000 m² (449) - institutional assets (malls, hotels, hospitals)
+                                                1,213 impossible sizes found (residential <= 20 m² / any <= 5 m²)
+                                                770 RECOVERED from title (method validated: 90% exact match on valid rows)
+                                                443 removed (no size in title)
+                                                new column size_source: original / from_title
+                                                END: min 6 / max 3,000 / std 300 = Done
+
+amenities = [ ?? ] ---> amenities Rank for Every Unite ==> Done
+
+page --> drop Column = Done 
+
+scraped_at_utc --> Datetime = Done
+                   19 Feb 2026, single 3.5-hour window
+                   => CROSS-SECTIONAL snapshot, not a time series
+                      (no trend analysis possible - noted in Domain + Limitations)
+                --> drop Column = Done
+
+min_price & max_price --> drop Column = Done
+
+1121 Nan [price,price_period,price_type,price_raw_value,property_type,location,share_url,size,amenities] --> drop raw = Done
+        "record_type ==> Project With No Data just New titles and Unknow info."
+
+=====================================================================
+FINAL:  64,106 rows x 23 cols  -->  47,420 rows x 25 cols   (-26%)
+        1,710 values corrected (713 size / 68 period / 929 price unit)
+        all corrections flagged: size_source / period_source / price_unit_fixed
+        saved as: cleaned_all_egypt.csv
+=====================================================================
