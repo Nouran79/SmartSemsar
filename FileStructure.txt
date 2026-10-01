@@ -1,0 +1,33 @@
+smartsemsar/
+├── .env.example                     # نموذج المفاتيح (Groq, ngrok, Calendar Keys)
+├── requirements.txt                 # المكتبات الموحدة (langgraph, langchain, streamlit, fastapi)
+│
+├── data/                            # 📁 قواعد البيانات والملفات المحلية (العضو 2)
+│   ├── properties.db                # قاعدة بيانات SQLite
+│   └── chroma_db/                   # متجهات صور الـ 2D (ChromaDB + CLIP)
+│
+├── cv_service/                      # 📁 سيرفر توليد الـ 3D الخارجي (العضو 3)
+│   └── colab_server.ipynb           # ControlNet + SDXL + FastAPI + ngrok على Colab
+│
+├── backend/                         # 📁 الباك إند ومحرك الـ Agents
+│   ├── app.py                       # FastAPI Endpoints لربط الـ Graph بالواجهة
+│   ├── config.py                    # قراءة المفاتيح والـ API Keys
+│   │
+│   ├── schema/                      # [العقد الموحد للبيانات]
+│   │   └── state.py                 # تعريف GraphState الخاص بـ LangGraph
+│   │
+│   ├── services/                    # [الخدمات التنفيذية المستقلة]
+│   │   ├── groq_service.py          # 🟢 العضو 1: Whisper + Llama 3.3
+│   │   ├── db_service.py            # 🔵 العضو 2: SQLite & CLIP Vector Search
+│   │   ├── colab_service.py         # 🟡 العضو 3: ngrok API Client للـ 3D
+│   │   └── closing_service.py       # 🟣 العضو 5: WhatsApp & Calendar Links
+│   │
+│   └── agents/                      # [عقد خريطة LangGraph والـ Routing Logic]
+│       ├── intake_node.py           # 🟢 العضو 1: Node تحويل Input لـ JSON
+│       ├── matcher_node.py          # 🔵 العضو 2: Node جلب الـ Top 5
+│       ├── staging_node.py          # 🟡 العضو 3: Node طلب الـ 3D
+│       ├── router_node.py           # 🔴 العضو 4: Node التراجع وتخفيف الشروط
+│       └── graph.py                 # 🔴 العضو 4: تجميع الخريطة compiled_graph
+│
+└── frontend/                        # 📁 واجهة المستخدم (العضو 5)
+    └── main_ui.py                   # تطبيق Streamlit للتفاعل مع الـ LangGraph

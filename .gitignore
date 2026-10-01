@@ -1,18 +1,17 @@
-data_pipeline/data
+data_pipeline
 *.zip
 *.tar
 *.db
 *.sqlite3
 chroma_db/
 .env
-**/data/
-data_pipeline/data/
+data_pipeline/data
 
 # تجاهل الملفات المضغوطة والصور والـ CSV
 *.zip
-*.png
-*.jpg
-*.csv
+# *.png
+# *.jpg
+# *.csv
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
