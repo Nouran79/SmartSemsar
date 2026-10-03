@@ -17,3 +17,12 @@ mapbox_earcut
 matplotlib
 kaggle
 pytest
+fastapi
+uvicorn
+
+langgraph
+langchain-core
+groq
+streamlit
+requests
+sentence-transformers
