@@ -1,136 +1,90 @@
-"""
-Smart Semsar - Customer intake (VS Code version)
-Inputs: recorded call and/or text.
+"""app.py: links pipeline.py (audio -> speaker-labeled conversation)
+with user_input_text.py (requirements extraction via Ollama)."""
+from datetime import datetime
+import sys
+from pathlib import Path
 
-Before running:
-  1) pip install -r requirements.txt
-  2) Install Ollama from https://ollama.com/download  then run:  ollama pull qwen2.5
-"""
-import json
-from typing import Optional, Literal
-
-import ollama
 import gradio as gr
-from pydantic import BaseModel, Field
-from faster_whisper import WhisperModel
 
+from pipeline import (
+    PROCESSED_AUDIO_DIR,
+    build_conversation,
+    get_device,
+    run_diarization,
+    setup_ffmpeg,
+    standardize_audio,
+    transcribe,
+    DATA_DIR
+) 
+from user_input_text import extract_requirements
 
-# ---------- 1) Schema ----------
-class CustomerRequirements(BaseModel):
-    location: Optional[str] = None
-    budget_min: Optional[float] = None
-    budget_max: Optional[float] = None
-    area_sqm: Optional[float] = None
-    bedrooms: Optional[int] = None
-    property_type: Optional[Literal["apartment", "villa", "duplex", "studio", "townhouse", "unknown"]] = "unknown"
-    purpose: Optional[Literal["living", "investment", "unknown"]] = "unknown"
-    timeline: Optional[str] = None
-    notes: Optional[str] = None
-    missing_fields: list[str] = Field(default_factory=list)
+DEVICE = get_device()
+OUTPUT_DIR = Path(r"D:\Ghadeer_Salah\SmartSemsar\Json_Files")
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
+def merge_turns(conversation):
+    merged = []
+    for t in conversation:
+        if merged and merged[-1]["speaker"] == t["speaker"]:
+            merged[-1]["text"] += " " + t["text"]
+            merged[-1]["end"] = t["end"]
+        else:
+            merged.append(dict(t))
+    return merged
 
-# ---------- 2) Speech to text ----------
-# Use "small" if your laptop is slow; "medium" is more accurate for Arabic.
-_whisper_model = WhisperModel("medium", device="auto", compute_type="int8")
-
-
-def transcribe_audio(file_path: str) -> str:
-    segments, info = _whisper_model.transcribe(
-        file_path,
-        language=None,
-        vad_filter=True,
-        vad_parameters=dict(min_silence_duration_ms=500),
-    )
-    print(f"Detected language: {info.language} (confidence: {info.language_probability:.2f})")
-    return " ".join(s.text.strip() for s in segments).strip()
-
-
-# ---------- 3) LLM extraction (Ollama) ----------
-MODEL_NAME = "qwen2.5"
-
-SYSTEM_PROMPT = '''You are a real-estate intake assistant.
-You receive raw text gathered from a phone call transcript and/or free text written
-by a customer. The input may be in Arabic, English, or a mix of both
-(including Egyptian dialect and code-switching).
-
-Extract the customer's property requirements and respond with ONLY a single valid
-JSON object matching this exact schema, no prose, no markdown fences:
-
-{
-  "location": string or null,
-  "budget_min": number or null,
-  "budget_max": number or null,
-  "area_sqm": number or null,
-  "bedrooms": integer or null,
-  "property_type": one of ["apartment","villa","duplex","studio","townhouse","unknown"],
-  "purpose": one of ["living","investment","unknown"],
-  "timeline": string or null,
-  "notes": string or null,
-  "missing_fields": array of field names you could not determine
-}
-
-Rules:
-- Never invent values. If a field is not mentioned, set it to null and add its name to missing_fields.
-- Numbers must be plain numbers (no currency symbols, no commas).
-- Keep the "location" and "notes" values in their original language as stated by the customer.
-- Respond in JSON only.
-'''
-
-
-def build_user_prompt(call_transcript=None, raw_text=None) -> str:
-    parts = []
-    if call_transcript:
-        parts.append(f"--- CALL TRANSCRIPT ---\n{call_transcript}")
-    if raw_text:
-        parts.append(f"--- CUSTOMER TEXT ---\n{raw_text}")
-    return "\n\n".join(parts) if parts else "No input provided."
-
-
-def extract_requirements(call_transcript=None, raw_text=None) -> CustomerRequirements:
-    response = ollama.chat(
-        model=MODEL_NAME,
-        format="json",
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": build_user_prompt(call_transcript, raw_text)},
-        ],
-        options={"temperature": 0},
-    )
-    raw_content = response["message"]["content"]
-    try:
-        parsed = json.loads(raw_content)
-    except json.JSONDecodeError:
-        cleaned = raw_content.strip().strip("`").replace("json\n", "", 1)
-        parsed = json.loads(cleaned)
-    return CustomerRequirements(**parsed)
-
-
-# ---------- 4) Gradio UI ----------
-def process_customer_input(audio_file, text_input):
-    call_transcript = None
+def link_call_to_requirements(audio_file, text_input):
     raw_text = text_input.strip() if text_input else None
+    conversation_text = None
 
     if audio_file is not None:
-        call_transcript = transcribe_audio(audio_file)
+        call_id = Path(audio_file).stem
+        wav_path = PROCESSED_AUDIO_DIR / f"{call_id}_standardized.wav"
 
-    if not any([call_transcript, raw_text]):
-        return "Please provide at least one input: a recorded call or text."
+        standardize_audio(setup_ffmpeg(), Path(audio_file), wav_path)
+        _, segments, _ = transcribe(wav_path, DEVICE)
+        turns, _ = run_diarization(wav_path, DEVICE)
+        conversation = merge_turns(build_conversation(segments, turns))
 
-    result = extract_requirements(call_transcript=call_transcript, raw_text=raw_text)
-    return result.model_dump_json(indent=2)
+        conversation_text = "\n".join(f"{t['speaker']}: {t['text']}" for t in conversation)
+
+    if not any([conversation_text, raw_text]):
+        return (
+            gr.Textbox(visible=False),
+            "Please provide at least one input: a recorded call or text.",
+            None,
+        )
+
+    result = extract_requirements(call_transcript=conversation_text, raw_text=raw_text)
+    json_text = result.model_dump_json(indent=2)
+
+    name = Path(audio_file).stem if audio_file else "text"
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    json_path = OUTPUT_DIR / f"{name}_{stamp}.json"
+    json_path.write_text(json_text, encoding="utf-8")
+
+    # Show the conversation box only when a call was provided
+    conversation_box = gr.Textbox(value=conversation_text, visible=conversation_text is not None)
+
+    return conversation_box, json_text, str(json_path)
 
 
 demo = gr.Interface(
-    fn=process_customer_input,
+    fn=link_call_to_requirements,
     inputs=[
         gr.Audio(sources=["upload", "microphone"], type="filepath", label="Recorded Call (optional)"),
         gr.Textbox(lines=3, label="Text (Arabic or English, optional)",
-                   placeholder="e.g. عايز شقة في التجمع 150 متر..."),
+                   placeholder="e.g. I want a 150 sqm apartment in New Cairo..."),
     ],
-    outputs=gr.Textbox(label="Extracted Requirements (JSON)"),
-    title="Smart Semsar — Tell us what you're looking for",
+    outputs=[
+        gr.Textbox(label="Call Conversation (speakers)", lines=8, visible=False),
+        gr.Textbox(label="Extracted Requirements (JSON)", lines=14),
+        gr.File(label="Download JSON"),
+    ],
+    title="Smart Semsar: Tell us what you're looking for",
     description="Upload a call recording and/or type your requirements. You can fill in one or both.",
 )
 
 if __name__ == "__main__":
-    demo.launch()  # opens on http://127.0.0.1:7860 ; use share=True for a public link
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
+    demo.launch(allowed_paths=[str(OUTPUT_DIR)])

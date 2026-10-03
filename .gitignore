@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 data_pipeline
 *.zip
 *.tar
@@ -231,9 +230,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
-=======
-venv/
-__pycache__/
-*.pyc
+
+data/processed_audio/
+data/requirements/
 .env
->>>>>>> main

@@ -1,14 +1,8 @@
-<<<<<<< HEAD
 google-generativeai
 pillow
 pandas
 opendatasets
 chromadb
 python-dotenv
-=======
-faster-whisper
-numpy
-ollama
-pydantic
 gradio
->>>>>>> main
+ollama
