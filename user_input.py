@@ -32,20 +32,22 @@ def merge_turns(conversation):
             merged.append(dict(t))
     return merged
 
+def audio_to_conversation(audio_file):
+    """Audio file -> speaker-labeled conversation text."""
+    call_id = Path(audio_file).stem
+    wav_path = PROCESSED_AUDIO_DIR / f"{call_id}_standardized.wav"
+
+    standardize_audio(setup_ffmpeg(), Path(audio_file), wav_path)
+    _, segments, _ = transcribe(wav_path, DEVICE)
+    turns, _ = run_diarization(wav_path, DEVICE)
+    conversation = merge_turns(build_conversation(segments, turns))
+
+    return "\n".join(f"{t['speaker']}: {t['text']}" for t in conversation)
+
+
 def link_call_to_requirements(audio_file, text_input):
     raw_text = text_input.strip() if text_input else None
-    conversation_text = None
-
-    if audio_file is not None:
-        call_id = Path(audio_file).stem
-        wav_path = PROCESSED_AUDIO_DIR / f"{call_id}_standardized.wav"
-
-        standardize_audio(setup_ffmpeg(), Path(audio_file), wav_path)
-        _, segments, _ = transcribe(wav_path, DEVICE)
-        turns, _ = run_diarization(wav_path, DEVICE)
-        conversation = merge_turns(build_conversation(segments, turns))
-
-        conversation_text = "\n".join(f"{t['speaker']}: {t['text']}" for t in conversation)
+    conversation_text = audio_to_conversation(audio_file) if audio_file is not None else None
 
     if not any([conversation_text, raw_text]):
         return (
