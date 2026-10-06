@@ -1,6 +1,8 @@
 from typing import TypedDict, List, Optional, Dict, Any, Annotated
 import operator
-from pydantic import BaseModel, Field
+
+from pydantic import BaseModel, Field, Literal
+
 
 
 class CustomerRequirements(BaseModel):
@@ -20,21 +22,21 @@ class PropertyItem(BaseModel):
     title: str = Field(description="Property title")
     price: float = Field(description="Price in EGP")
     location: str = Field(description="Location/Area")
-    pf_bedrooms: Optional[int] = Field(default=None, description="عدد غرف النوم")
-    pf_bathrooms: Optional[int] = Field(default=None, description="عدد الحمامات")
-    pf_area_sqm: Optional[float] = Field(default=None, description="المساحة بالمتر المربع")
-    cubicasa_id: Optional[str] = Field(default=None, description="CubiCasa dataset ID للمخطط")
-    image_path: Optional[str] = Field(default=None, description="مسار صورة الـ 2D Sketch")
+    pf_bedrooms: Optional[int] = Field(default=None, description="No. of Bedrooms")
+    pf_bathrooms: Optional[int] = Field(default=None, description="Bathrooms number")
+    pf_area_sqm: Optional[float] = Field(default=None, description="Area")
+    cubicasa_id: Optional[str] = Field(default=None, description="CubiCasa dataset ID")
+    image_path: Optional[str] = Field(default=None, description="Path of 2D Sketch")
 
     
 def update_profile_reducer(old_profile: Optional[CustomerRequirements], new_profile: Optional[CustomerRequirements]) -> Optional[CustomerRequirements]:
-    """تحديث البروفايل جزئياً بدلاً من مسحه بالكامل عند إضافة معلومة جديدة"""
+    """Profile partial Update"""
+    
     if not old_profile:
         return new_profile
     if not new_profile:
         return old_profile
-    
-    # دمج البيانات القديمة والجديدة
+      
     updated_data = old_profile.model_dump()
     new_data = new_profile.model_dump(exclude_unset=True)
     updated_data.update(new_data)
@@ -45,18 +47,24 @@ def update_profile_reducer(old_profile: Optional[CustomerRequirements], new_prof
 
 class AgentState(TypedDict):
     session_id: str
+      
     # Inputs
-    user_input_type: str                         # 'voice' | 'pdf' | 'text' | 'sketch'
+    user_input_type: str   # 'voice' | 'pdf' | 'text' | 'sketch'
     raw_input_path_or_text: str
 
-    # Profile (يتم دمجه تلقائياً لو تم تعديله في أكثر من Node)
+    # Profile
     customer_reqs: Annotated[Optional[CustomerRequirements], update_profile_reducer]
 
-    # Matching Results (القائمة هتلحق بها التنائج بدلاً من الإلغاء الكامل لو استخدمت operator.add)
+    #matching service vars
     top_properties: Optional[List[PropertyItem]]
+    used_fallback: Optional[bool]
+    total_found: Optional[int]
+
+    selected_property_id: Optional[str]
     selected_property: Optional[PropertyItem]
+    
     custom_sketch_path: Optional[str]
-    matching_status: str
+    matching_status: Optional[str]
 
     # CV & 3D Staging
     render_3d_url: Optional[str]
