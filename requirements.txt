@@ -4,6 +4,10 @@ pandas
 opendatasets
 chromadb
 python-dotenv
+
+gradio
+ollama
+
 faster-whisper
 numpy
 ollama
@@ -26,3 +30,4 @@ groq
 streamlit
 requests
 sentence-transformers
+
