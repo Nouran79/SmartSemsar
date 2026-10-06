@@ -1,6 +1,8 @@
 from typing import TypedDict, List, Optional, Dict, Any, Annotated
 import operator
+
 from pydantic import BaseModel, Field, Literal
+
 
 
 class CustomerRequirements(BaseModel):
@@ -29,11 +31,12 @@ class PropertyItem(BaseModel):
     
 def update_profile_reducer(old_profile: Optional[CustomerRequirements], new_profile: Optional[CustomerRequirements]) -> Optional[CustomerRequirements]:
     """Profile partial Update"""
+    
     if not old_profile:
         return new_profile
     if not new_profile:
         return old_profile
-       
+      
     updated_data = old_profile.model_dump()
     new_data = new_profile.model_dump(exclude_unset=True)
     updated_data.update(new_data)
@@ -44,6 +47,7 @@ def update_profile_reducer(old_profile: Optional[CustomerRequirements], new_prof
 
 class AgentState(TypedDict):
     session_id: str
+      
     # Inputs
     user_input_type: str   # 'voice' | 'pdf' | 'text' | 'sketch'
     raw_input_path_or_text: str
