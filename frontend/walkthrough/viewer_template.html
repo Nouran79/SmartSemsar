@@ -1,0 +1,450 @@
+<title>__PAGE_TITLE__</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600&display=swap">
+<style>
+  /* Layout: full-bleed 3D canvas, drafting-sheet HUD pinned to the corners. */
+  :root {
+    --paper: #f3f2ee;          /* HUD panel ground */
+    --ink: #1f2a30;            /* text */
+    --muted: #5d6a70;          /* secondary text */
+    --rule: #c9cdc8;           /* hairlines */
+    --accent: #2f6f8f;         /* blueprint blue: active controls */
+    --warn-bg: #fbecc8;        /* source warning band */
+    --warn-ink: #5a4310;
+    --scene-bg: #dfe6ea;       /* canvas ground behind the model */
+    --display: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
+    --body: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #1d2427; --ink: #e6ebec; --muted: #9aa8ad; --rule: #3a464b;
+      --accent: #7fb6d2; --warn-bg: #3d3216; --warn-ink: #f2d796; --scene-bg: #2a3236;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #1d2427; --ink: #e6ebec; --muted: #9aa8ad; --rule: #3a464b;
+    --accent: #7fb6d2; --warn-bg: #3d3216; --warn-ink: #f2d796; --scene-bg: #2a3236;
+    color-scheme: dark;
+  }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--scene-bg); color: var(--ink); font: 15px/1.4 var(--body); overflow: hidden; }
+  #stage { position: fixed; inset: 0; touch-action: none; }
+  #stage canvas { display: block; width: 100%; height: 100%; }
+
+  .panel { background: color-mix(in srgb, var(--paper) 92%, transparent); border: 1px solid var(--rule);
+           border-radius: 6px; backdrop-filter: blur(6px); }
+  .label { font: 600 12px/1 var(--display); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+
+  #top { position: fixed; left: 16px; right: 16px; top: calc(12px + env(safe-area-inset-top, 0px));
+         display: flex; flex-direction: column; gap: 8px; pointer-events: none; max-width: 640px; }
+  #listing { padding: 10px 14px; pointer-events: auto; }
+  #listing h1 { margin: 2px 0 0; font: 600 20px/1.15 var(--display); text-wrap: balance; }
+  #listing .meta { color: var(--muted); font-size: 13px; margin-top: 2px; }
+  #warning { background: var(--warn-bg); color: var(--warn-ink); border-radius: 6px; padding: 8px 12px;
+             font-size: 13px; pointer-events: auto; }
+  #warning b { font-family: var(--display); letter-spacing: .04em; text-transform: uppercase; margin-right: 6px; }
+
+  #room { position: fixed; left: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); padding: 10px 14px; min-width: 150px; }
+  #room-name { font: 600 24px/1.1 var(--display); margin-top: 4px; }
+  #room-meta { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+
+  #controls { position: fixed; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+              display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+  .seg { display: flex; padding: 3px; gap: 3px; }
+  .seg button { font: 600 13px/1 var(--display); letter-spacing: .06em; text-transform: uppercase;
+                border: 0; background: transparent; color: var(--ink); padding: 9px 12px; border-radius: 4px; cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: var(--paper); }
+  .seg button:focus-visible, #start:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  #start-wrap { position: fixed; left: 16px; right: 16px; bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+                display: flex; justify-content: center; pointer-events: none; }
+  #start { pointer-events: auto; font: 600 18px/1 var(--display); letter-spacing: .06em; text-transform: uppercase;
+           background: var(--accent); color: var(--paper); border: 0; border-radius: 6px; padding: 14px 22px; cursor: pointer; }
+  #help { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+          padding: 8px 12px; font-size: 13px; color: var(--muted); white-space: nowrap; }
+  #crosshair { position: fixed; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px;
+               border-radius: 50%; background: var(--paper); box-shadow: 0 0 0 1px var(--ink); pointer-events: none; }
+  .tag { position: fixed; transform: translate(-50%, -50%); font: 600 12px/1.1 var(--display); letter-spacing: .05em;
+         text-transform: uppercase; color: var(--ink); background: var(--paper); padding: 3px 6px; border-radius: 3px;
+         pointer-events: none; white-space: nowrap; border: 1px solid var(--rule); }
+  .tag small { display: block; font: 500 11px/1.1 var(--body); text-transform: none; letter-spacing: 0; color: var(--muted);
+               font-variant-numeric: tabular-nums; }
+  #error { position: fixed; inset: auto 16px 50% 16px; padding: 14px; text-align: center; }
+
+  @media (max-width: 720px) {
+    #help { display: none; }
+    #controls { left: 16px; flex-direction: row; justify-content: space-between; align-items: flex-end; }
+    #room { bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
+    #start-wrap { bottom: calc(160px + env(safe-area-inset-bottom, 0px)); }
+    #listing h1 { font-size: 17px; }
+    #room { min-width: 0; }
+    #room-name { font-size: 20px; }
+  }
+</style>
+
+<div id="stage" aria-label="3D walkthrough of the floor plan"></div>
+
+<div id="top">
+  <div id="listing" class="panel">
+    <div class="label" id="listing-id"></div>
+    <h1 id="listing-title"></h1>
+    <div class="meta" id="listing-meta"></div>
+  </div>
+  <div id="warning" role="note"><b>Layout</b><span id="warning-text"></span></div>
+</div>
+
+<div id="room" class="panel" aria-live="polite">
+  <div class="label" id="room-floor">Overview</div>
+  <div id="room-name">Whole plan</div>
+  <div id="room-meta"></div>
+</div>
+
+<div id="controls">
+  <div class="seg panel" id="floors" role="group" aria-label="Floor"></div>
+  <div class="seg panel" role="group" aria-label="View mode">
+    <button id="mode-overview" aria-pressed="true">Overview</button>
+    <button id="mode-walk" aria-pressed="false">Walk</button>
+  </div>
+</div>
+
+<div id="start-wrap"><button id="start">Start walkthrough</button></div>
+<div id="help" class="panel" hidden></div>
+<div id="crosshair" hidden></div>
+<div id="error" class="panel" hidden></div>
+
+<script type="application/json" id="plan-data">__PLAN_JSON__</script>
+<script type="application/json" id="viewer-data">__VIEWER_JSON__</script>
+<script type="text/plain" id="glb-data">__GLB_B64__</script>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/GLTFLoader.js"></script>
+<script>
+(() => {
+  // ---------- data (plan.json is the source of truth; GLB is built from it) ----------
+  const PLAN = JSON.parse(document.getElementById("plan-data").textContent);
+  const VIEW = JSON.parse(document.getElementById("viewer-data").textContent);
+  const EYE = 1.6, RADIUS = 0.3, WALK = 1.6, RUN = 3.2;
+  const ROOM_NAMES = { bedroom: "Bedroom", bathroom: "Bathroom", living: "Living room", kitchen: "Kitchen",
+    dining: "Dining", entry: "Entrance", hallway: "Hallway", storage: "Storage", closet: "Closet",
+    laundry: "Laundry", sauna: "Sauna", technical: "Technical room", room: "Room", outdoor: "Outdoor",
+    garage: "Car port", other: "Hall / other" };
+
+  // plan (x, y) meters, z up  ->  three.js (x, height, -y)
+  const toWorld = (x, y, h) => new THREE.Vector3(x, h, -y);
+  const floorBase = level => level * VIEW.storey_height_m;
+
+  // ---------- HUD text ----------
+  const L = VIEW.listing || {};
+  document.getElementById("listing-id").textContent = [L.property_id, PLAN.source_ref].filter(Boolean).join(" · ");
+  document.getElementById("listing-title").textContent = L.title || PLAN.plan_id;
+  document.getElementById("listing-meta").textContent = [L.location, L.area_sqm && `${L.area_sqm} m²`,
+    L.bedrooms != null && `${L.bedrooms} bed`, L.bathrooms != null && `${L.bathrooms} bath`].filter(Boolean).join(" · ");
+  document.getElementById("warning-text").textContent = VIEW.source_warning;
+
+  // ---------- three.js setup ----------
+  const stage = document.getElementById("stage");
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  stage.appendChild(renderer.domElement);
+
+  const scene = new THREE.Scene();
+  const sky = new THREE.Color(getComputedStyle(document.documentElement).getPropertyValue("--scene-bg").trim() || "#dfe6ea");
+  scene.background = sky;
+  const camera = new THREE.PerspectiveCamera(70, 1, 0.05, 500);
+  camera.rotation.order = "YXZ";
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x8a8f86, 0.95));
+  const sun = new THREE.DirectionalLight(0xffffff, 0.55);
+  sun.position.set(20, 40, 15);
+  scene.add(sun);
+
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 400),
+    new THREE.MeshStandardMaterial({ color: 0xb9c2b3, roughness: 1 }));
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.y = floorBase(Math.min(...PLAN.floors.map(f => f.level))) - 0.06;
+  scene.add(ground);
+
+  // floors: one group per level, holding GLB meshes + ceilings + per-room groups (for interior staging later)
+  const levels = {};
+  PLAN.floors.forEach(f => {
+    const g = new THREE.Group(); g.name = `level_${f.level}`;
+    const ceilings = new THREE.Group(); ceilings.name = "ceilings";
+    const rooms = new THREE.Group(); rooms.name = "rooms";   // furniture goes in rooms/<room id>
+    g.add(ceilings, rooms);
+    f.rooms.forEach(r => { const rg = new THREE.Group(); rg.name = r.id; rg.userData = { type: r.type, area_sqm: r.area_sqm }; rooms.add(rg); });
+    levels[f.level] = { floor: f, group: g, walls: [], ceilings, rooms };
+    scene.add(g);
+  });
+
+  // ceilings from room polygons (walk mode only)
+  const ceilingMat = new THREE.MeshStandardMaterial({ color: 0xf4f3ef, emissive: 0x5c5b57, roughness: 1, side: THREE.DoubleSide });
+  PLAN.floors.forEach(f => f.rooms.filter(r => r.type !== "outdoor" && r.type !== "garage").forEach(r => {
+    const shape = new THREE.Shape(r.polygon.map(([x, y]) => new THREE.Vector2(x, y)));
+    const mesh = new THREE.Mesh(new THREE.ShapeGeometry(shape), ceilingMat);
+    mesh.rotation.x = -Math.PI / 2;          // shape (x, y) -> world (x, -y) on the horizontal plane
+    mesh.position.y = floorBase(f.level) + VIEW.wall_height_m;
+    levels[f.level].ceilings.add(mesh);
+  }));
+
+  // ---------- load the GLB ----------
+  const b64 = document.getElementById("glb-data").textContent.trim();
+  const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+  const glbMat = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.92, metalness: 0, side: THREE.DoubleSide });
+  new THREE.GLTFLoader().parse(bytes.buffer, "", gltf => {
+    const meshes = [];
+    gltf.scene.traverse(o => { if (o.isMesh) meshes.push(o); });
+    gltf.scene.updateMatrixWorld(true);
+    meshes.forEach(o => {
+      const name = o.name.startsWith("L") ? o.name : (o.parent && o.parent.name) || "";
+      const m = name.match(/^L(-?\d+)_/);
+      const lv = levels[m ? +m[1] : PLAN.floors[0].level];
+      if (!o.geometry.attributes.normal) o.geometry.computeVertexNormals();
+      const col = o.geometry.attributes.color;
+      if (col) {   // GLB stores sRGB bytes; three.js expects linear vertex colors
+        const lin = new Float32Array(col.count * col.itemSize);
+        for (let i = 0; i < col.count; i++) {
+          lin[i * col.itemSize] = Math.pow(col.getX(i), 2.2);
+          lin[i * col.itemSize + 1] = Math.pow(col.getY(i), 2.2);
+          lin[i * col.itemSize + 2] = Math.pow(col.getZ(i), 2.2);
+          if (col.itemSize === 4) lin[i * 4 + 3] = col.getW(i);
+        }
+        o.geometry.setAttribute("color", new THREE.BufferAttribute(lin, col.itemSize));
+      }
+      o.material = glbMat;
+      o.applyMatrix4(o.parent.matrixWorld);   // bake transforms before re-parenting
+      lv.group.add(o);
+      if (name.includes("_wall_")) lv.walls.push(o);
+    });
+    setFloor(VIEW.start_level);
+    setMode("overview");
+    renderer.setAnimationLoop(tick);
+  }, err => {
+    const e = document.getElementById("error");
+    e.hidden = false;
+    e.textContent = "The 3D model could not be loaded. Rebuild it with build_walkthrough.py and reopen this page.";
+    console.error(err);
+  });
+
+  // ---------- state ----------
+  let level = VIEW.start_level, mode = "overview";
+  let yaw = 0, pitch = 0;
+  const pos = new THREE.Vector3();
+  const keys = new Set();
+  const orbit = { yaw: -0.6, dist: 1, target: new THREE.Vector3() };
+
+  // floor buttons (only when there is more than one floor)
+  const floorsEl = document.getElementById("floors");
+  if (PLAN.floors.length > 1) {
+    PLAN.floors.forEach(f => {
+      const b = document.createElement("button");
+      b.textContent = f.level < 0 ? `B${-f.level}` : f.level === 0 ? "Ground" : `Floor ${f.level}`;
+      b.dataset.level = f.level;
+      b.addEventListener("click", () => setFloor(f.level));
+      floorsEl.appendChild(b);
+    });
+  } else floorsEl.hidden = true;
+
+  const floorInfo = l => VIEW.floors.find(f => f.level === l);
+  function setFloor(l) {
+    level = l;
+    Object.values(levels).forEach(v => { v.group.visible = v.floor.level <= l; });
+    floorsEl.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.level === l)));
+    const fi = floorInfo(l);
+    pos.copy(toWorld(fi.spawn[0], fi.spawn[1], floorBase(l) + EYE));
+    yaw = fi.spawn_yaw || 0; pitch = 0;
+    orbit.target.copy(toWorld(fi.center[0], fi.center[1], floorBase(l)));
+    orbit.dist = Math.max(fi.extent * 1.25, 8);
+    buildTags();
+    updateRoom(true);
+  }
+
+  // ---------- modes ----------
+  const help = document.getElementById("help"), cross = document.getElementById("crosshair");
+  const startWrap = document.getElementById("start-wrap");
+  const isTouch = matchMedia("(pointer: coarse)").matches;
+  function setMode(m) {
+    mode = m;
+    document.getElementById("mode-overview").setAttribute("aria-pressed", String(m === "overview"));
+    document.getElementById("mode-walk").setAttribute("aria-pressed", String(m === "walk"));
+    Object.values(levels).forEach(v => { v.ceilings.visible = m === "walk"; });
+    startWrap.hidden = m === "walk";
+    cross.hidden = m !== "walk";
+    help.hidden = m !== "walk";
+    help.textContent = isTouch ? "Drag left side to move · drag right side to look"
+      : "Click the view to look with the mouse · W A S D or arrows to move · Shift to run · Esc to release";
+    tagsEl.forEach(t => { t.el.hidden = m !== "overview"; });
+    if (m === "overview" && document.pointerLockElement) document.exitPointerLock();
+    updateRoom(true);
+  }
+  document.getElementById("mode-overview").addEventListener("click", () => setMode("overview"));
+  document.getElementById("mode-walk").addEventListener("click", () => setMode("walk"));
+  document.getElementById("start").addEventListener("click", () => { setMode("walk"); tryLock(); });
+
+  function tryLock() {
+    if (isTouch || !renderer.domElement.requestPointerLock) return;
+    try { const p = renderer.domElement.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (e) {}
+  }
+
+  // ---------- input ----------
+  addEventListener("keydown", e => {
+    if (e.target.tagName === "BUTTON" && (e.code === "Space" || e.code === "Enter")) return;
+    keys.add(e.code);
+    if (mode === "walk" && e.code.startsWith("Arrow")) e.preventDefault();
+  });
+  addEventListener("keyup", e => keys.delete(e.code));
+  addEventListener("blur", () => keys.clear());
+
+  const look = (dx, dy, k) => { yaw -= dx * k; pitch = Math.max(-1.3, Math.min(1.3, pitch - dy * k)); };
+  document.addEventListener("mousemove", e => {
+    if (mode === "walk" && document.pointerLockElement === renderer.domElement) look(e.movementX, e.movementY, 0.0022);
+  });
+
+  // pointer drag: overview = orbit; walk without pointer lock = look (right half) / move (left half on touch)
+  const drags = new Map();
+  const touchMove = { x: 0, y: 0 };
+  stage.addEventListener("pointerdown", e => {
+    if (mode === "walk" && !isTouch && document.pointerLockElement !== renderer.domElement) tryLock();
+    drags.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY,
+      role: mode === "walk" && isTouch && e.clientX < innerWidth / 2 ? "move" : "look" });
+    stage.setPointerCapture(e.pointerId);
+  });
+  stage.addEventListener("pointermove", e => {
+    const d = drags.get(e.pointerId); if (!d) return;
+    const dx = e.clientX - d.x, dy = e.clientY - d.y; d.x = e.clientX; d.y = e.clientY;
+    if (mode === "overview") { orbit.yaw -= dx * 0.006; return; }
+    if (d.role === "look" && document.pointerLockElement !== renderer.domElement) look(dx, dy, 0.005);
+    if (d.role === "move") {
+      touchMove.x = Math.max(-1, Math.min(1, (e.clientX - d.sx) / 60));
+      touchMove.y = Math.max(-1, Math.min(1, (e.clientY - d.sy) / 60));
+    }
+  });
+  const endDrag = e => { const d = drags.get(e.pointerId); if (d && d.role === "move") touchMove.x = touchMove.y = 0; drags.delete(e.pointerId); };
+  stage.addEventListener("pointerup", endDrag);
+  stage.addEventListener("pointercancel", endDrag);
+  stage.addEventListener("wheel", e => {
+    if (mode !== "overview") return;
+    e.preventDefault();
+    orbit.dist = Math.max(4, Math.min(120, orbit.dist * (1 + Math.sign(e.deltaY) * 0.1)));
+  }, { passive: false });
+
+  // ---------- collision: rays at knee and chest height against this floor's walls ----------
+  // knee ray is blocked by window sills, both rays pass through door openings
+  const ray = new THREE.Raycaster();
+  function blocked(dir, dist) {
+    const walls = levels[level].walls;
+    for (const h of [0.45, 1.5]) {
+      ray.set(new THREE.Vector3(pos.x, floorBase(level) + h, pos.z), dir);
+      ray.far = dist + RADIUS;
+      if (ray.intersectObjects(walls, false).length) return true;
+    }
+    return false;
+  }
+  function stepAxis(v) {
+    const d = v.length(); if (d < 1e-6) return;
+    const dir = v.clone().normalize();
+    if (!blocked(dir, d)) pos.add(v);
+  }
+
+  // ---------- current room ----------
+  function inPoly(x, y, poly) {
+    let inside = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const [xi, yi] = poly[i], [xj, yj] = poly[j];
+      if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
+  }
+  let lastRoom = null;
+  const floorLabel = l => l < 0 ? `Basement ${-l}` : l === 0 ? "Ground floor" : `Floor ${l}`;
+  function updateRoom(force) {
+    const nameEl = document.getElementById("room-name"), metaEl = document.getElementById("room-meta");
+    document.getElementById("room-floor").textContent = (PLAN.floors.length > 1 ? floorLabel(level) + " · " : "") +
+      (mode === "walk" ? "You are in" : "Overview");
+    if (mode !== "walk") {
+      lastRoom = null;
+      const f = levels[level].floor;
+      nameEl.textContent = `${PLAN.total_area_sqm.toFixed(0)} m² plan`;
+      metaEl.textContent = `${f.rooms.filter(r => r.type === "bedroom").length} bedrooms on this floor · ${PLAN.floors.length} floor${PLAN.floors.length > 1 ? "s" : ""}`;
+      return;
+    }
+    const x = pos.x, y = -pos.z;
+    const r = levels[level].floor.rooms.find(r => inPoly(x, y, r.polygon)) || null;
+    if (r === lastRoom && !force) return;
+    lastRoom = r;
+    nameEl.textContent = r ? ROOM_NAMES[r.type] || r.type : "Between rooms";
+    metaEl.textContent = r ? `${r.area_sqm.toFixed(1)} m²` : "";
+  }
+
+  // ---------- room tags in overview ----------
+  const tagsEl = [];
+  function buildTags() {
+    tagsEl.forEach(t => t.el.remove()); tagsEl.length = 0;
+    floorInfo(level).rooms.forEach(r => {
+      if (r.area_sqm < 3) return;
+      const el = document.createElement("div");
+      el.className = "tag";
+      el.innerHTML = `${ROOM_NAMES[r.type] || r.type}<small>${r.area_sqm.toFixed(1)} m²</small>`;
+      el.hidden = mode !== "overview";
+      document.body.appendChild(el);
+      tagsEl.push({ el, p: toWorld(r.label[0], r.label[1], floorBase(level) + 0.1) });
+    });
+  }
+  const v3 = new THREE.Vector3();
+  function placeTags() {
+    tagsEl.forEach(t => {
+      v3.copy(t.p).project(camera);
+      t.el.style.left = `${(v3.x * 0.5 + 0.5) * innerWidth}px`;
+      t.el.style.top = `${(-v3.y * 0.5 + 0.5) * innerHeight}px`;
+    });
+  }
+
+  // ---------- loop ----------
+  function resize() {
+    const w = stage.clientWidth, h = stage.clientHeight;
+    renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+  }
+  addEventListener("resize", resize); resize();
+
+  const clock = new THREE.Clock();
+  const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function tick() {
+    const dt = Math.min(clock.getDelta(), 0.25);
+    if (mode === "walk") {
+      let f = 0, s = 0;
+      if (keys.has("KeyW") || keys.has("ArrowUp")) f += 1;
+      if (keys.has("KeyS") || keys.has("ArrowDown")) f -= 1;
+      if (keys.has("KeyD")) s += 1;
+      if (keys.has("KeyA")) s -= 1;
+      if (keys.has("ArrowLeft")) yaw += 1.8 * dt;
+      if (keys.has("ArrowRight")) yaw -= 1.8 * dt;
+      f -= touchMove.y; s += touchMove.x;
+      const speed = (keys.has("ShiftLeft") || keys.has("ShiftRight") ? RUN : WALK) * dt;
+      const fx = -Math.sin(yaw), fz = -Math.cos(yaw);       // forward
+      const mx = (fx * f + -fz * s) * speed, mz = (fz * f + fx * s) * speed;
+      // sub-steps of <= 10 cm keep collision exact on slow devices
+      const n = Math.max(1, Math.ceil(Math.hypot(mx, mz) / 0.1));
+      for (let i = 0; i < n; i++) { stepAxis(new THREE.Vector3(mx / n, 0, 0)); stepAxis(new THREE.Vector3(0, 0, mz / n)); }
+      pos.y = floorBase(level) + EYE;
+      camera.position.copy(pos);
+      camera.rotation.set(pitch, yaw, 0);
+      updateRoom(false);
+    } else {
+      if (!reduceMotion && !drags.size) orbit.yaw += dt * 0.05;
+      const el = 0.95, dist = orbit.dist * Math.pow(Math.max(1, 1 / camera.aspect), 0.8);  // narrow screens: back off
+      camera.position.set(orbit.target.x + dist * Math.cos(el) * Math.sin(orbit.yaw),
+                          orbit.target.y + dist * Math.sin(el),
+                          orbit.target.z + dist * Math.cos(el) * Math.cos(orbit.yaw));
+      camera.lookAt(orbit.target);
+      placeTags();
+    }
+    renderer.render(scene, camera);
+  }
+
+  // hook for the interior-staging phase: furniture is added per room id
+  window.smartsemsar = { plan: PLAN, scene, levels, roomGroup: id => scene.getObjectByName(id),
+                         state: () => ({ x: pos.x, y: -pos.z, yaw, level, mode }) };
+})();
+</script>
