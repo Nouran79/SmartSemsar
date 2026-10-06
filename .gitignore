@@ -1,9 +1,15 @@
+
+data/location_extraction.py
+backend/services/Matching_service.py
+backend/agents/clarification_node.py
+backend/agents/graph.py
+
 data_pipeline
 *.zip
 *.tar
 *.db
 *.sqlite3
-chroma_db/
+# chroma_db/
 .env
 data_pipeline/data
 
@@ -231,6 +237,14 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
+
 data/processed_audio/
 data/requirements/
 .env
+
+venv/
+__pycache__/
+*.pyc
+.env
+
+
