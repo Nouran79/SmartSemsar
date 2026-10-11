@@ -10,7 +10,7 @@ import json
 from typing import Optional, Literal
 
 from dotenv import main
-# import ollama
+import ollama
 from langchain_groq import ChatGroq
 from langchain_core.messages import SystemMessage, HumanMessage
 import gradio as gr
@@ -34,10 +34,18 @@ from backend.schema.state import CustomerRequirements
 
 # ---------- 2) Speech to text ----------
 # Use "small" if your laptop is slow; "medium" is more accurate for Arabic.
-_whisper_model = WhisperModel("medium", device="auto", compute_type="int8")
+# _whisper_model = WhisperModel("medium", device="auto", compute_type="int8")
+_whisper_model = None
 
+def get_whisper_model():
+    global _whisper_model
+    if _whisper_model is None:
+        # ممكن كمان نستخدم "base" أو "small" لو الـ medium بيستهلك الرامات عندك
+        _whisper_model = WhisperModel("small", device="cpu", compute_type="int8")
+    return _whisper_model
 
 def transcribe_audio(file_path: str) -> str:
+    _whisper_model=get_whisper_model()
     segments, info = _whisper_model.transcribe(
         file_path,
         language=None,
@@ -49,8 +57,9 @@ def transcribe_audio(file_path: str) -> str:
 
 
 # ---------- 3) LLM extraction (Ollama) ----------
-# MODEL_NAME = "qwen2.5"
-
+MODEL_NAME = "qwen2.5:1.5b"
+# "qwen2.5"
+# model=
 SYSTEM_PROMPT = '''You are a real-estate intake assistant.
 You receive raw text gathered from a phone call transcript and/or free text written
 by a customer. The input may be in Arabic, English, or a mix of both
@@ -90,22 +99,79 @@ def build_user_prompt(call_transcript=None, raw_text=None) -> str:
         parts.append(f"--- CUSTOMER TEXT ---\n{raw_text}")
     return "\n\n".join(parts) if parts else "No input provided."
 
-llm = ChatGroq(model_name="openai/gpt-oss-20b", temperature=0)
-structured_llm = llm.with_structured_output(CustomerRequirements)
-                                            
+# llm = ChatGroq(model_name="openai/gpt-oss-20b", temperature=0)
+# structured_llm = llm.with_structured_output(CustomerRequirements)
+# llm = ChatGoogleGenerativeAI(
+#     model="gemini-3.8-flash",
+#     temperature=0
+# )
+
 def extract_requirements(call_transcript=None, raw_text=None) -> CustomerRequirements:
-    user_prompt = build_user_prompt(call_transcript, raw_text)
-    messages = [
-        SystemMessage(content=SYSTEM_PROMPT),
-        HumanMessage(content=user_prompt)
-    ]
-    req = structured_llm.invoke(messages)
+    response = ollama.chat(
+        model=MODEL_NAME,
+        format="json",
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": build_user_prompt(call_transcript, raw_text)},
+        ],
+        options={"temperature": 0},
+    )
+    raw_content = response["message"]["content"]
+    try:
+        parsed = json.loads(raw_content)
+    except json.JSONDecodeError:
+        cleaned = raw_content.strip().strip("`").replace("json\n", "", 1)
+        parsed = json.loads(cleaned)
+
+    req = CustomerRequirements(**parsed)
 
     fields = ["location", "budget_min", "budget_max", "area_sqm",
               "bedrooms", "property_type", "purpose", "notes"]
     req.missing_fields = [f for f in fields if getattr(req, f) in (None, "unknown")]
 
     return req
+
+
+# def extract_requirements(call_transcript=None, raw_text=None) -> CustomerRequirements:
+#     user_prompt = build_user_prompt(call_transcript, raw_text)
+    
+#     messages = [
+#         SystemMessage(content=SYSTEM_PROMPT + "\n\nCRITICAL: Respond ONLY with a valid JSON object matching the requested schema, no extra text."),
+#         HumanMessage(content=user_prompt)
+#     ]
+    
+#     # استدعاء عادي جداً بدون with_structured_output لتجنب مشاكل الـ Tool choice
+#     response = llm.invoke(messages)
+#     raw_content = response.content
+    
+#     try:
+#         parsed = json.loads(raw_content)
+#     except json.JSONDecodeError:
+#         # تنظيف الـ markdown لو الموديل حط ````json ... ````
+#         cleaned = raw_content.strip().strip("`").replace("json\n", "", 1)
+#         parsed = json.loads(cleaned)
+
+#     req = CustomerRequirements(**parsed)
+
+#     fields = ["location", "budget_min", "budget_max", "area_sqm",
+#               "bedrooms", "property_type", "purpose", "notes"]
+#     req.missing_fields = [f for f in fields if getattr(req, f) in (None, "unknown")]
+
+#     return req
+
+# def extract_requirements(call_transcript=None, raw_text=None) -> CustomerRequirements:
+#     user_prompt = build_user_prompt(call_transcript, raw_text)
+#     messages = [
+#         SystemMessage(content=SYSTEM_PROMPT),
+#         HumanMessage(content=user_prompt)
+#     ]
+#     req = structured_llm.invoke(messages)
+
+#     fields = ["location", "budget_min", "budget_max", "area_sqm",
+#               "bedrooms", "property_type", "purpose", "notes"]
+#     req.missing_fields = [f for f in fields if getattr(req, f) in (None, "unknown")]
+
+#     return req
     # response = ollama.chat(
     #     model=MODEL_NAME,
     #     format="json",
