@@ -1,30 +1,31 @@
-"""furniture_node.py: LangGraph node that furnishes the 3D model staging_3d_node built.
+# """furniture_node.py: LangGraph node that furnishes the 3D model staging_3d_node built.
 
-The user's own pieces (custom_pieces: raw GLBs from photos or uploads) take the place of catalog
-items; then the rules or the LLM place everything, the validator checks it, and a furnished
-walkthrough is built next to the empty one (services/multi_furnish.furnish_with_pieces).
+# The user's own pieces (custom_pieces: raw GLBs from photos or uploads) take the place of catalog
+# items; then the rules or the LLM place everything, the validator checks it, and a furnished
+# walkthrough is built next to the empty one (services/multi_furnish.furnish_with_pieces).
 
-Reads from state:
-    selected_property : PropertyItem
-    model_state       : ModelState      (status "ready": plan_path, glb_path)
-    furniture_state   : FurnitureState  (preferences, planner, custom_pieces)
+# Reads from state:
+#     selected_property : PropertyItem
+#     model_state       : ModelState      (status "ready": plan_path, glb_path)
+#     furniture_state   : FurnitureState  (preferences, planner, custom_pieces)
 
-Writes to state:
-    furniture_state : FurnitureState (status, staging_path, walkthrough_path, report ...)
-    next_step       : "done" | "error"
-    error           : str | None
-"""
+# Writes to state:
+#     furniture_state : FurnitureState (status, staging_path, walkthrough_path, report ...)
+#     next_step       : "done" | "error"
+#     error           : str | None
+# """
 from pathlib import Path
 
-from backend.schema.state import FurnitureState, GraphState
+from backend.schema.state import FurnitureState, AgentState
 from backend.services.custom_furniture import FRONT_TURN_DEG
 from backend.services.multi_furnish import Piece, furnish_with_pieces
+
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MODELS_DIR = REPO_ROOT / "data" / "models"
 
 
-def furniture_node(state: GraphState) -> dict:
+def furniture_node(state: AgentState) -> dict:
     prop = state.get("selected_property")
     model_state = state.get("model_state")
     fs = state.get("furniture_state") or FurnitureState()
@@ -63,3 +64,4 @@ def furniture_node(state: GraphState) -> dict:
 def _failed(fs: FurnitureState, message: str) -> dict:
     return {"furniture_state": fs.model_copy(update={"status": "failed", "error": message}),
             "next_step": "error", "error": message}
+

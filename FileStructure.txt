@@ -31,3 +31,37 @@ smartsemsar/
 │
 └── frontend/                        # 📁 واجهة المستخدم (العضو 5)
     └── main_ui.py                   # تطبيق Streamlit للتفاعل مع الـ LangGraph
+
+
+    ---------------
+
+    smartsemsar/
+├── .env.example                     # نموذج المفاتيح (Groq, ngrok, Calendar Keys)
+├── requirements.txt                 # المكتبات الموحدة (langgraph, langchain, streamlit, fastapi)
+│
+├── data/                            # 📁 قواعد البيانات والملفات المحلية (العضو 2)
+│   ├── properties.csv               # قاعدة بيانات SQLite
+│   └── floorPlans/
+|   |__ SVGs/                   # متجهات صور الـ 2D (ChromaDB + CLIP)
+|
+├── backend/                         # 📁 الباك إند ومحرك الـ Agents
+│   ├── app.py                       # FastAPI Endpoints لربط الـ Graph بالواجهة
+│   ├── config.py                    # قراءة المفاتيح والـ API Keys
+│   │
+│   ├── schema/                      # [العقد الموحد للبيانات]
+│   │   └── state.py                 # تعريف GraphState الخاص بـ LangGraph
+│   │
+│   ├── services/                    # [الخدمات التنفيذية المستقلة]
+│   │   ├── 
+│   │   ├── db_service.py            # 🔵 العضو 2: SQLite & CLIP Vector Search
+│   │  
+│   │
+│   └── agents/                      # [عقد خريطة LangGraph والـ Routing Logic]
+│       |
+│       ├── matcher_node.py          # 🔵 العضو 2: Node جلب الـ Top 5
+│       |
+│       ├── router_node.py           # 🔴 العضو 4: Node التراجع وتخفيف الشروط
+│       └── graph.py                 # 🔴 العضو 4: تجميع الخريطة compiled_graph
+│
+└── frontend/                      
+    └── main_ui.py                 
