@@ -37,3 +37,4 @@ langchain-google-genai
 librosa
 soundfile
 pyannote.audio
+torchvision
