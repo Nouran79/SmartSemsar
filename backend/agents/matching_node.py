@@ -1,15 +1,30 @@
 from backend.services.MatchingFeature import PropertyMatchingService, CustomerRequirements
 from backend.schema.state import AgentState, PropertyItem
 from typing import Optional, Literal, List, Dict, Any
+from langgraph.types import interrupt
+
 
 Property_matching_service= PropertyMatchingService(csv_path="data/final_merged_dataset.csv", chroma_path="data/chroma_db")
 
 def match_properties_node(state: AgentState)-> Dict[str, Any]:
     print("Execute Matching Property")
 
-    requirements= state.get("customer_reqs") or {}
+    raw_reqs= state.get("customer_reqs") or {}
     macro_intent= state.get('macro_intent')
     micro_intent= state.get('micro_intent')
+    # لو الـ customer_reqs راجعة كـ Dictionary، نحولها لـ CustomerRequirements Object
+    if isinstance(raw_reqs, dict):
+        requirements = CustomerRequirements(
+            location=raw_reqs.get("location"),
+            budget_max=raw_reqs.get("budget_max"),
+            bedrooms=raw_reqs.get("bedrooms"),
+            area_sqm=raw_reqs.get("area_sqm"),
+            property_type=raw_reqs.get("property_type")
+        )
+    else:
+        requirements = raw_reqs
+
+        
     all_prop=""
     property_objects = []
 
@@ -54,9 +69,17 @@ def select_property_node(state: AgentState) -> dict:
     selected_id = state.get("selected_property_id")
     top_props = state.get("top_properties", []) or []
 
+    # لو اليوزر لسه مَسَكّش ولا اختيار، نعمل Interrupt ونبعت الـ 5 شقق للواجهة
     if not selected_id:
-        return {"selected_property": None}
+        user_choice = interrupt({
+            "type": "property_selection",
+            "message": "إليك أفضل العقارات المطابقة لطلباتك، يرجى اختيار العقار المناسب:",
+            "properties": top_props  # أول 5 شقق
+        })
+        # لو اليوزر اختار من الواجهة، الـ user_choice هيرجع فيه الـ property_id (أو الـ ID المختار)
+        selected_id = user_choice.get("property_id") if isinstance(user_choice, dict) else user_choice
 
+    # وهنا باقي الكود بتاعك زي ما هو...
     chosen_property = next(
         (p for p in top_props if str(p.property_id) == str(selected_id)), 
         None

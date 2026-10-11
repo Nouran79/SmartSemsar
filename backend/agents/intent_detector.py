@@ -183,7 +183,7 @@ def detect_intent(conversation: str) -> Dict[str, Any]:
     
     result = intent_chain.invoke({"conversation": normalized_text})
     
-    result_dict = result#.model_dump()
+    result_dict = result.model_dump()
     
     detected_intent = result_dict.get("intent")
     
