@@ -61,15 +61,7 @@ class PropertyMatchingService:
 
             print(f"\n📥 [Input Req] Location: '{reqs.location}' | Max Budget: {reqs.budget_max} | Rooms: {reqs.bedrooms} | Area: {reqs.area_sqm}")
             
-            # user_location_query = user_requirements.get("location", "")
-            # max_price = user_requirements.get("budget_max")
-            # bedrooms = user_requirements.get("bedrooms")
-            # area_sqm = user_requirements.get("area_sqm")
-
-            # # إعداد حدود المساحة بـ Margin ±15%
-            # min_area = area_sqm * 0.85 if area_sqm else None
-            # max_area = area_sqm * 1.15 if area_sqm else None
-
+    
             # -------------------------------------------------------------------
             # 🟢 المحاولة الأولى: الفلترة الصارمة (Strict Search)
             # -------------------------------------------------------------------
@@ -107,6 +99,7 @@ class PropertyMatchingService:
 
     def _rank_by_location_embeddings(self, location_query: str, candidate_ids: list, top_k: int = 5) -> list:
         """ترتيب قائمة العقارات المرشحة باستخدام Vector Similarity في ChromaDB"""
+        print("lllllllllllllllllllll")
         if not candidate_ids:
             return []
 

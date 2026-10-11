@@ -50,10 +50,10 @@ class AgentState(TypedDict):
     session_id: str
 
     # Inputs
-    user_input_type: Optional[str]   # 'voice' | 'pdf' | 'text' | 'sketch'
+    user_input_type: Optional[str]=Field(default=None)   # 'voice' | 'pdf' | 'text' | 'sketch'
     # raw_input_path_or_text: Optional[str]
-    audio_path:Optional[str]
-    user_text: Optional[str]
+    user_req_audio_path:Optional[str]=Field(default=None)
+    user_req_text: Optional[str]=Field(default=None)
 
     user_query: Optional[str]
     uploaded_sketch_path: Optional[str] 

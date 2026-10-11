@@ -70,12 +70,14 @@ def route_micro_intent(state: AgentState) -> str:
     micro_intent = state.get("micro_intent")
     
     if micro_intent in ["new_search", "modify_search"]:
+        print("new search here")
         return "input_reqs"
         
     elif micro_intent == "alternative_search":
         return "Alternate_match"
         
     elif micro_intent in ["property_inquiry", "booking_request", "positive_feedback", "negative_feedback"]:
+        print("go to select property node")
         return "select_property"
         
     else:
