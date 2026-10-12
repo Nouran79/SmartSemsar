@@ -1,3 +1,15 @@
+"""routing_node.py: LangGraph node that decides what happens after the 3D
+model step. There is no "classic" / 2D fallback path here - once the GLB
+model is ready, the only next stop is furniture placement.
+
+Reads from state:
+    model_state : ModelState
+
+Writes to state:
+    next_step : "3d_staging" | "retry" | "error" | "furniture"
+    error     : str | None
+"""
+
 from langchain_groq import ChatGroq
 from pydantic import BaseModel, Field
 from backend.schema.state import AgentState, PropertyItem
@@ -137,14 +149,11 @@ DEFAULT_QUICK_ACTIONS = [
     "🏢 تصفح كل الشقق المتاحة"
 ]
 
-
-
 def supervisor_router_node(state: AgentState) -> dict:
     print("\n🧠 [Supervisor Router] Evaluating macro entry point...")
     user_query = state.get("user_query") or ""
     current_state = state.get("current_stage") or ""
     
-
     if current_state=="property_results_displayed":
         return {
         "macro_intent": "search_by_reqs",
@@ -185,7 +194,20 @@ def supervisor_router_node(state: AgentState) -> dict:
     }
 
 
+def routing_node(state: AgentState) -> dict:
+    model_state = state.get("model_state")
 
+    if model_state is None or model_state.status == "pending":
+        return {"next_step": "3d_staging"}
+
+    if model_state.status == "building":
+        return {"next_step": "retry"}
+
+    if model_state.status == "failed":
+        return {"next_step": "error", "error": model_state.error or "3D model build failed."}
+
+    # status == "ready" -> hand off to furniture placement
+    return {"next_step": "furniture"}
 
 
 
@@ -213,5 +235,4 @@ def supervisor_router_node(state: AgentState) -> dict:
     #     }
     
     
-  
-    
+

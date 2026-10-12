@@ -1,8 +1,10 @@
 
+
 data/location_extraction.py
 backend/services/Matching_service.py
 backend/agents/clarification_node.py
 backend/agents/graph.py
+
 
 data_pipeline
 *.zip
@@ -237,7 +239,6 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-
 data/processed_audio/
 data/requirements/
 .env
@@ -247,4 +248,8 @@ __pycache__/
 *.pyc
 .env
 
+# inference.py results (per-run outputs, user furniture)
+smartsemsar-plan-3d-files/out/
 
+# inference.py / app.py results
+out/

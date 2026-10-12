@@ -13,6 +13,7 @@ numpy
 ollama
 pydantic
 gradio
+langgraph
 # 2D plan -> 3D model pipeline
 shapely
 trimesh
@@ -21,6 +22,10 @@ mapbox_earcut
 matplotlib
 kaggle
 pytest
+
+requests
+gradio_client
+
 fastapi
 uvicorn
 
@@ -38,3 +43,4 @@ librosa
 soundfile
 pyannote.audio
 torchvision
+
