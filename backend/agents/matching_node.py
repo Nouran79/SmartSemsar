@@ -54,7 +54,9 @@ def match_properties_node(state: AgentState)-> Dict[str, Any]:
             pf_bathrooms=prop.get("pf_bathrooms"),
             pf_area_sqm=prop.get("pf_area_sqm"),
             cubicasa_id=prop.get("cubicasa_id"),
-            image_path=prop.get("image_path")
+            plan_path= prop.get("plan_path"),
+            image_path=prop.get("image_path"),
+            svg_path=prop.get("svg_path")
         )
         property_objects.append(item)
     return {
@@ -70,14 +72,15 @@ def select_property_node(state: AgentState) -> dict:
     top_props = state.get("top_properties", []) or []
 
     # لو اليوزر لسه مَسَكّش ولا اختيار، نعمل Interrupt ونبعت الـ 5 شقق للواجهة
-    if not selected_id:
-        user_choice = interrupt({
-            "type": "property_selection",
-            "message": "إليك أفضل العقارات المطابقة لطلباتك، يرجى اختيار العقار المناسب:",
-            "properties": top_props  # أول 5 شقق
-        })
-        # لو اليوزر اختار من الواجهة، الـ user_choice هيرجع فيه الـ property_id (أو الـ ID المختار)
-        selected_id = user_choice.get("property_id") if isinstance(user_choice, dict) else user_choice
+    
+    print("interuptp")
+    user_choice = interrupt({
+        "type": "property_selection",
+        "message": "إليك أفضل العقارات المطابقة لطلباتك، يرجى اختيار العقار المناسب:",
+        "properties": top_props  # أول 5 شقق
+    })
+    # لو اليوزر اختار من الواجهة، الـ user_choice هيرجع فيه الـ property_id (أو الـ ID المختار)
+    selected_id = user_choice.get("property_id") if isinstance(user_choice, dict) else user_choice
 
     # وهنا باقي الكود بتاعك زي ما هو...
     chosen_property = next(
@@ -97,15 +100,18 @@ def select_property_node(state: AgentState) -> dict:
                 pf_bathrooms=raw_p.get("pf_bathrooms"),
                 pf_area_sqm=raw_p.get("pf_area_sqm"),
                 cubicasa_id=raw_p.get("cubicasa_id"),
-                image_path=raw_p.get("image_path")
+                plan_path= raw_p.get("plan_path"),
+                image_path=raw_p.get("image_path"),
+                svg_path=raw_p.get("svg_path")
             )
 
     if chosen_property:
         print(f"Chosen Property is: {chosen_property.title} (ID: {chosen_property.property_id})")
+    
+    print("finish selection node")
 
     return {
         "selected_property": chosen_property,
-        "custom_sketch_path": chosen_property.image_path,
         "current_stage": "property_selected"
     }
 

@@ -21,6 +21,7 @@ MODELS_DIR = REPO_ROOT / "data" / "models"
 
 
 def staging_3d_node(state: AgentState) -> dict:
+    print("staging 3d node")
     prop = state.get("selected_property")
     if prop is None or not prop.plan_path:
         return {"model_state": ModelState(status="failed", error="No property/plan selected.")}
