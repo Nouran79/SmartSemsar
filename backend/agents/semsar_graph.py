@@ -7,10 +7,10 @@ from backend.agents.intent_detector import detect_intent_node
 from backend.agents.input_node import input_node
 from backend.agents.sketch_2D_to_svg_node import sketch_to_svg_node
 from backend.agents.matching_node import match_properties_node, select_property_node
-from backend.agents.staging_3d_node import staging_3d_node
-from backend.agents.furniture_node import furniture_node
 from backend.agents.final_report_node import whatsapp_report_node
-
+from backend.agents.furniture_node import furniture_node
+from backend.agents.routing_node import routing_node ##
+from backend.agents.staging_3d_node import staging_3d_node
 
 builder = StateGraph(AgentState)
 
@@ -22,15 +22,12 @@ builder.add_node("detect_micro_intent", detect_intent_node)
 builder.add_node("input_extraction", input_node)
 builder.add_node("match_properties", match_properties_node)
 builder.add_node("select_property", select_property_node)
-builder.add_node("staging_3d", staging_3d_node)
 builder.add_node("sketch_to_svg", sketch_to_svg_node)
-# """
-# 'search_by_reqs'
-# 'sketch_based_search' 
-# 'direct_sketch_staging' 
-# 'general_browse'
-# 'request_sketch_upload'
-# """
+builder.add_node("staging_3d", staging_3d_node)
+builder.add_node("routing", routing_node)
+builder.add_node("furniture", furniture_node)
+
+
 
 builder.add_edge(START, "supervisor_router")
 

@@ -1,7 +1,26 @@
+"""
+Smart Semsar - Shared LangGraph state (GraphState)
+العقد الموحد لحالة الـ Graph: كل Node بيقرأ ويكتب في نفس الـ State.
+
+Rules:
+  - One 3D pipeline only: a Plan is extruded deterministically into a GLB
+    (backend/services/plan_to_glb.py). There is no "classic" 2D-staging
+    mode here - staging always works on the 3D model.
+  - model_state tracks that GLB build so routing_node knows when the graph
+    can move on to furniture placement.
+  - furniture_state carries the user's wishes and own pieces into furniture_node,
+    and what it placed in that same 3D model (staging + furnished walkthrough).
+"""
 from typing import Literal, TypedDict, List, Optional, Dict, Any, Annotated
 import operator
 
+from __future__ import annotations
+
+from typing import Literal, Optional, TypedDict
+
 from pydantic import BaseModel, Field
+
+from backend.schema.design import DesignPreferences
 
 
 
@@ -26,10 +45,58 @@ class PropertyItem(BaseModel):
     pf_bedrooms: Optional[int] = Field(default=None, description="No. of Bedrooms")
     pf_bathrooms: Optional[int] = Field(default=None, description="Bathrooms number")
     pf_area_sqm: Optional[float] = Field(default=None, description="Area")
+    plan_path: Optional[str] = None
     cubicasa_id: Optional[int] = Field(default=None, description="CubiCasa dataset ID")
     image_path: Optional[str] = Field(default=None, description="Path of 2D Sketch")
 
     
+
+
+# ---------- 3D GLB model state ----------
+# No "classic" / 2D-render mode: plan.json -> .glb is the only staging path.
+ModelStatus = Literal["pending", "building", "ready", "failed"]
+
+
+class ModelState(BaseModel):
+    status: ModelStatus = "pending"
+    plan_path: Optional[str] = None
+    glb_path: Optional[str] = None
+    walkthrough_path: Optional[str] = None
+    error: Optional[str] = None
+
+
+# ---------- furniture placed in that 3D model ----------
+FurnitureStatus = Literal["pending", "ready", "rejected", "failed"]
+NextStep = Literal["matching", "3d_staging", "furniture", "retry", "error", "done"]
+
+class CustomPiece(BaseModel):
+    """The user's own piece: a raw GLB (from a photo or uploaded) that replaces one catalog item."""
+    glb_path: str
+    slot: str                               # catalog id or kind it replaces, e.g. "sofa" / "sofa_3_seat"
+    width_m: Optional[float] = None         # real width; None = the stock item's width
+    yaw_deg: float = 0.0                    # turn it if it faces sideways
+    generator: Optional[str] = None         # what made the GLB ("colab" models face backwards and are turned)
+    label: str = ""                         # e.g. the photo's file name, for the report
+
+
+class FurnitureState(BaseModel):
+    status: FurnitureStatus = "pending"
+    # what the user asked for (filled before the graph runs, or by an intake node)
+    preferences: DesignPreferences = Field(default_factory=DesignPreferences)
+    planner: Literal["rules", "llm"] = "rules"
+    custom_pieces: list[CustomPiece] = Field(default_factory=list)
+    # what furniture_node produced
+    staging_path: Optional[str] = None      # staging.json: every placed item
+    walkthrough_path: Optional[str] = None  # the furnished walkthrough (model_state's one stays empty)
+    placed_count: int = 0
+    unplaced: list[str] = Field(default_factory=list)
+    failed_checks: list[str] = Field(default_factory=list)
+    report: list[str] = Field(default_factory=list)
+    error: Optional[str] = None
+
+
+
+
 def update_profile_reducer(old_profile: Optional[CustomerRequirements], new_profile: Optional[CustomerRequirements]) -> Optional[CustomerRequirements]:
     """Profile partial Update"""
     
@@ -69,21 +136,22 @@ class AgentState(TypedDict):
     svg_data: Optional[str]
 
     #matching service vars
-    
     top_properties: Optional[List[PropertyItem]]
     used_fallback: Optional[bool]
     total_found: Optional[int]
 
     selected_property_id: Optional[str]
     selected_property: Optional[PropertyItem]
+
+    # 3D model (staging_3d_node)
+    model_state: ModelState
+
+    # furniture in the 3D model (furniture_node)
+    furniture_state: FurnitureState
     
     custom_sketch_path: Optional[str]
     matching_status: Optional[str]
 
-    # CV & 3D Staging
-    render_3d_url: Optional[str]
-    staging_3d_result: Optional[Dict[str, Any]]
-    furnished_result: Optional[Dict[str, Any]]
     whatsapp_report_sent: bool
     # user_decision: Optional[str]  # 'proceed_3d', 'furnish', 'send_whatsapp', 'stop'
     agent_response: Optional[str]
@@ -91,3 +159,4 @@ class AgentState(TypedDict):
     # Workflow Control & Errors
     error_message: Optional[str]
     next_step: Optional[str]
+

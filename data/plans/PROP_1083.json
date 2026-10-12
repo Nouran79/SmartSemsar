@@ -799,6 +799,474 @@
      "sill_height_m": 0.9,
      "height_m": 1.2
     }
+   ],
+   "fixtures": [
+    {
+     "id": "F0_X0",
+     "type": "stairs",
+     "raw_type": "Flight",
+     "room_id": "F0_R2",
+     "polygon": [
+      [
+       5.4029,
+       9.2441
+      ],
+      [
+       5.4029,
+       9.9699
+      ],
+      [
+       6.2632,
+       9.9699
+      ],
+      [
+       6.2632,
+       9.2441
+      ]
+     ],
+     "height_m": 2.7,
+     "elevation_m": 0.0
+    },
+    {
+     "id": "F0_X1",
+     "type": "stairs",
+     "raw_type": "Winding",
+     "room_id": "F0_R2",
+     "polygon": [
+      [
+       6.2632,
+       9.9699
+      ],
+      [
+       7.0716,
+       9.9699
+      ],
+      [
+       7.0716,
+       9.2441
+      ],
+      [
+       6.2632,
+       9.2441
+      ]
+     ],
+     "height_m": 2.7,
+     "elevation_m": 0.0
+    },
+    {
+     "id": "F0_X2",
+     "type": "stairs",
+     "raw_type": "Flight",
+     "room_id": "F0_R2",
+     "polygon": [
+      [
+       7.0716,
+       9.9699
+      ],
+      [
+       6.2632,
+       9.9699
+      ],
+      [
+       6.2632,
+       10.5191
+      ],
+      [
+       7.0716,
+       10.5191
+      ]
+     ],
+     "height_m": 2.7,
+     "elevation_m": 0.0
+    },
+    {
+     "id": "F0_X3",
+     "type": "stairs",
+     "raw_type": "Winding",
+     "room_id": "F0_R2",
+     "polygon": [
+      [
+       6.2632,
+       10.5191
+      ],
+      [
+       6.2632,
+       11.3245
+      ],
+      [
+       7.0716,
+       11.3245
+      ],
+      [
+       7.0716,
+       10.5191
+      ]
+     ],
+     "height_m": 2.7,
+     "elevation_m": 0.0
+    },
+    {
+     "id": "F0_X4",
+     "type": "column",
+     "raw_type": "Column Rectangle",
+     "room_id": "F0_R5",
+     "polygon": [
+      [
+       0.2129,
+       9.0596
+      ],
+      [
+       0.7879,
+       9.0596
+      ],
+      [
+       0.7879,
+       8.788
+      ],
+      [
+       0.2129,
+       8.788
+      ]
+     ],
+     "height_m": 2.7,
+     "elevation_m": 0.0
+    },
+    {
+     "id": "F0_X5",
+     "type": "closet",
+     "raw_type": "FixedFurniture CoatCloset",
+     "room_id": "F0_R1",
+     "polygon": [
+      [
+       7.0504,
+       9.0596
+      ],
+      [
+       7.0504,
+       8.0284
+      ],
+      [
+       6.5507,
+       8.0284
+      ],
+      [
+       6.5507,
+       9.0596
+      ]
+     ],
+     "height_m": 2.1,
+     "elevation_m": 0.0
+    },
+    {
+     "id": "F0_X6",
+     "type": "closet",
+     "raw_type": "FixedFurniture Closet",
+     "room_id": "F0_R1",
+     "polygon": [
+      [
+       7.051,
+       8.0284
+      ],
+      [
+       7.051,
+       7.5188
+      ],
+      [
+       6.5513,
+       7.5188
+      ],
+      [
+       6.5513,
+       8.0284
+      ]
+     ],
+     "height_m": 2.1,
+     "elevation_m": 0.0
+    },
+    {
+     "id": "F0_X7",
+     "type": "closet",
+     "raw_type": "FixedFurniture Closet",
+     "room_id": "F0_R1",
+     "polygon": [
+      [
+       7.051,
+       7.5188
+      ],
+      [
+       7.051,
+       7.0092
+      ],
+      [
+       6.5513,
+       7.0092
+      ],
+      [
+       6.5513,
+       7.5188
+      ]
+     ],
+     "height_m": 2.1,
+     "elevation_m": 0.0
+    },
+    {
+     "id": "F0_X8",
+     "type": "toilet",
+     "raw_type": "FixedFurniture Toilet",
+     "room_id": "F0_R7",
+     "polygon": [
+      [
+       7.0517,
+       5.8424
+      ],
+      [
+       7.0517,
+       5.4769
+      ],
+      [
+       6.4122,
+       5.4769
+      ],
+      [
+       6.4122,
+       5.8424
+      ]
+     ],
+     "height_m": 0.8,
+     "elevation_m": 0.0
+    },
+    {
+     "id": "F0_X9",
+     "type": "base_cabinet",
+     "raw_type": "FixedFurniture BaseCabinet",
+     "room_id": "F0_R7",
+     "polygon": [
+      [
+       5.9529,
+       4.5608
+      ],
+      [
+       5.427,
+       4.5608
+      ],
+      [
+       5.427,
+       4.9512
+      ],
+      [
+       5.9529,
+       4.9512
+      ]
+     ],
+     "height_m": 0.9,
+     "elevation_m": 0.0
+    },
+    {
+     "id": "F0_X10",
+     "type": "sink",
+     "raw_type": "FixedFurniture Sink",
+     "room_id": "F0_R7",
+     "polygon": [
+      [
+       5.9529,
+       4.5608
+      ],
+      [
+       5.427,
+       4.5608
+      ],
+      [
+       5.427,
+       4.9512
+      ],
+      [
+       5.9529,
+       4.9512
+      ]
+     ],
+     "height_m": 0.85,
+     "elevation_m": 0.0
+    },
+    {
+     "id": "F0_X11",
+     "type": "appliance",
+     "raw_type": "FixedFurniture ElectricalAppliance",
+     "room_id": "F0_R5",
+     "polygon": [
+      [
+       1.9162,
+       9.0596
+      ],
+      [
+       2.5307,
+       9.0596
+      ],
+      [
+       2.5307,
+       8.4602
+      ],
+      [
+       1.9162,
+       8.4602
+      ]
+     ],
+     "height_m": 0.85,
+     "elevation_m": 0.0
+    },
+    {
+     "id": "F0_X12",
+     "type": "appliance",
+     "raw_type": "FixedFurniture ElectricalAppliance Refrigerator",
+     "room_id": "F0_R5",
+     "polygon": [
+      [
+       1.3168,
+       9.059
+      ],
+      [
+       1.9162,
+       9.059
+      ],
+      [
+       1.9162,
+       8.4596
+      ],
+      [
+       1.3168,
+       8.4596
+      ]
+     ],
+     "height_m": 0.85,
+     "elevation_m": 0.0
+    },
+    {
+     "id": "F0_X13",
+     "type": "base_cabinet",
+     "raw_type": "FixedFurniture BaseCabinet",
+     "room_id": "F0_R5",
+     "polygon": [
+      [
+       0.7879,
+       8.788
+      ],
+      [
+       0.7879,
+       9.059
+      ],
+      [
+       1.3168,
+       9.059
+      ],
+      [
+       1.3168,
+       8.459
+      ],
+      [
+       0.7879,
+       8.459
+      ],
+      [
+       0.7879,
+       5.893
+      ],
+      [
+       0.2129,
+       5.893
+      ],
+      [
+       0.2129,
+       8.788
+      ]
+     ],
+     "height_m": 0.9,
+     "elevation_m": 0.0
+    },
+    {
+     "id": "F0_X14",
+     "type": "sink",
+     "raw_type": "FixedFurniture Sink",
+     "room_id": "F0_R5",
+     "polygon": [
+      [
+       0.2142,
+       7.8596
+      ],
+      [
+       0.2142,
+       8.3607
+      ],
+      [
+       0.7678,
+       8.3607
+      ],
+      [
+       0.7678,
+       7.8596
+      ]
+     ],
+     "height_m": 0.85,
+     "elevation_m": 0.0
+    },
+    {
+     "id": "F0_X15",
+     "type": "appliance",
+     "raw_type": "FixedFurniture ElectricalAppliance IntegratedStove",
+     "room_id": "F0_R5",
+     "polygon": [
+      [
+       0.2246,
+       7.0288
+      ],
+      [
+       0.2246,
+       7.5446
+      ],
+      [
+       0.7847,
+       7.5446
+      ],
+      [
+       0.7847,
+       7.0288
+      ]
+     ],
+     "height_m": 0.85,
+     "elevation_m": 0.0
+    },
+    {
+     "id": "F0_X16",
+     "type": "wall_cabinet",
+     "raw_type": "FixedFurniture WallCabinet",
+     "room_id": "F0_R5",
+     "polygon": [
+      [
+       0.2246,
+       5.893
+      ],
+      [
+       0.2129,
+       5.8916
+      ],
+      [
+       0.2129,
+       8.788
+      ],
+      [
+       0.2246,
+       8.788
+      ],
+      [
+       0.5112,
+       8.788
+      ],
+      [
+       0.5112,
+       5.893
+      ]
+     ],
+     "height_m": 0.7,
+     "elevation_m": 1.4
+    }
    ]
   },
   {
@@ -1629,6 +2097,580 @@
      "width_m": 2.305,
      "sill_height_m": 0.9,
      "height_m": 1.2
+    }
+   ],
+   "fixtures": [
+    {
+     "id": "F1_X0",
+     "type": "column",
+     "raw_type": "Column Rectangle",
+     "room_id": "F1_R8",
+     "polygon": [
+      [
+       0.1845,
+       4.9883
+      ],
+      [
+       0.1845,
+       5.2111
+      ],
+      [
+       0.6965,
+       5.2111
+      ],
+      [
+       0.6965,
+       4.9883
+      ]
+     ],
+     "height_m": 2.7,
+     "elevation_m": 0.0
+    },
+    {
+     "id": "F1_X1",
+     "type": "stairs",
+     "raw_type": "Flight",
+     "room_id": "F1_R1",
+     "polygon": [
+      [
+       5.4071,
+       5.8405
+      ],
+      [
+       5.4071,
+       6.6115
+      ],
+      [
+       6.2577,
+       6.6115
+      ],
+      [
+       6.2577,
+       5.8405
+      ]
+     ],
+     "height_m": 2.7,
+     "elevation_m": 0.0
+    },
+    {
+     "id": "F1_X2",
+     "type": "stairs",
+     "raw_type": "Winding",
+     "room_id": "F1_R1",
+     "polygon": [
+      [
+       6.2577,
+       6.6115
+      ],
+      [
+       6.9898,
+       6.6115
+      ],
+      [
+       6.9898,
+       5.8405
+      ],
+      [
+       6.2577,
+       5.8405
+      ]
+     ],
+     "height_m": 2.7,
+     "elevation_m": 0.0
+    },
+    {
+     "id": "F1_X3",
+     "type": "stairs",
+     "raw_type": "Flight",
+     "room_id": "F1_R1",
+     "polygon": [
+      [
+       6.9898,
+       6.6115
+      ],
+      [
+       6.2577,
+       6.6115
+      ],
+      [
+       6.2577,
+       7.1281
+      ],
+      [
+       6.9898,
+       7.1281
+      ]
+     ],
+     "height_m": 2.7,
+     "elevation_m": 0.0
+    },
+    {
+     "id": "F1_X4",
+     "type": "stairs",
+     "raw_type": "Winding",
+     "room_id": "F1_R1",
+     "polygon": [
+      [
+       6.2577,
+       7.1281
+      ],
+      [
+       6.2577,
+       7.867
+      ],
+      [
+       6.9898,
+       7.867
+      ],
+      [
+       6.9898,
+       7.1281
+      ]
+     ],
+     "height_m": 2.7,
+     "elevation_m": 0.0
+    },
+    {
+     "id": "F1_X5",
+     "type": "stairs",
+     "raw_type": "Flight",
+     "room_id": "F1_R1",
+     "polygon": [
+      [
+       6.2577,
+       7.867
+      ],
+      [
+       6.2577,
+       7.1281
+      ],
+      [
+       5.4071,
+       7.1281
+      ],
+      [
+       5.4071,
+       7.867
+      ]
+     ],
+     "height_m": 2.7,
+     "elevation_m": 0.0
+    },
+    {
+     "id": "F1_X6",
+     "type": "sauna_bench",
+     "raw_type": "FixedFurniture SaunaBenchHigh",
+     "room_id": "F1_R2",
+     "polygon": [
+      [
+       0.1847,
+       0.8288
+      ],
+      [
+       0.1847,
+       2.364
+      ],
+      [
+       0.5937,
+       2.364
+      ],
+      [
+       0.5937,
+       0.8288
+      ]
+     ],
+     "height_m": 0.5,
+     "elevation_m": 0.0
+    },
+    {
+     "id": "F1_X7",
+     "type": "sauna_bench",
+     "raw_type": "FixedFurniture SaunaBenchMid",
+     "room_id": "F1_R2",
+     "polygon": [
+      [
+       0.5937,
+       0.8288
+      ],
+      [
+       0.5937,
+       2.364
+      ],
+      [
+       0.8663,
+       2.364
+      ],
+      [
+       0.8663,
+       0.8288
+      ]
+     ],
+     "height_m": 0.5,
+     "elevation_m": 0.0
+    },
+    {
+     "id": "F1_X8",
+     "type": "sauna_bench",
+     "raw_type": "FixedFurniture SaunaBenchLow",
+     "room_id": "F1_R2",
+     "polygon": [
+      [
+       0.8663,
+       0.8288
+      ],
+      [
+       0.8663,
+       2.364
+      ],
+      [
+       1.139,
+       2.364
+      ],
+      [
+       1.139,
+       0.8288
+      ]
+     ],
+     "height_m": 0.5,
+     "elevation_m": 0.0
+    },
+    {
+     "id": "F1_X9",
+     "type": "appliance",
+     "raw_type": "FixedFurniture ElectricalAppliance SaunaStove",
+     "room_id": "F1_R2",
+     "polygon": [
+      [
+       2.6013,
+       0.8832
+      ],
+      [
+       2.6013,
+       0.3368
+      ],
+      [
+       2.2517,
+       0.3368
+      ],
+      [
+       2.2517,
+       0.8832
+      ]
+     ],
+     "height_m": 0.85,
+     "elevation_m": 0.0
+    },
+    {
+     "id": "F1_X10",
+     "type": "closet",
+     "raw_type": "FixedFurniture Closet",
+     "room_id": "F1_R3",
+     "polygon": [
+      [
+       2.7867,
+       1.8853
+      ],
+      [
+       2.7867,
+       2.364
+      ],
+      [
+       3.3103,
+       2.364
+      ],
+      [
+       3.3103,
+       1.8853
+      ]
+     ],
+     "height_m": 2.1,
+     "elevation_m": 0.0
+    },
+    {
+     "id": "F1_X11",
+     "type": "closet",
+     "raw_type": "FixedFurniture CoatCloset",
+     "room_id": "F1_R3",
+     "polygon": [
+      [
+       2.7863,
+       0.8327
+      ],
+      [
+       2.7863,
+       1.8853
+      ],
+      [
+       3.3099,
+       1.8853
+      ],
+      [
+       3.3099,
+       0.8327
+      ]
+     ],
+     "height_m": 2.1,
+     "elevation_m": 0.0
+    },
+    {
+     "id": "F1_X12",
+     "type": "shower",
+     "raw_type": "FixedFurniture Shower",
+     "room_id": "F1_R4",
+     "polygon": [
+      [
+       0.3837,
+       4.8038
+      ],
+      [
+       0.7034,
+       4.8038
+      ],
+      [
+       0.7034,
+       4.614
+      ],
+      [
+       0.3837,
+       4.614
+      ]
+     ],
+     "height_m": 0.05,
+     "elevation_m": 0.0
+    },
+    {
+     "id": "F1_X13",
+     "type": "appliance",
+     "raw_type": "FixedFurniture ElectricalAppliance WashingMachine",
+     "room_id": "F1_R4",
+     "polygon": [
+      [
+       3.3518,
+       2.5509
+      ],
+      [
+       2.7523,
+       2.5509
+      ],
+      [
+       2.7523,
+       3.1503
+      ],
+      [
+       3.3518,
+       3.1503
+      ]
+     ],
+     "height_m": 0.85,
+     "elevation_m": 0.0
+    },
+    {
+     "id": "F1_X14",
+     "type": "toilet",
+     "raw_type": "FixedFurniture Toilet",
+     "room_id": "F1_R8",
+     "polygon": [
+      [
+       0.1845,
+       5.4078
+      ],
+      [
+       0.1845,
+       5.8005
+      ],
+      [
+       0.8221,
+       5.8005
+      ],
+      [
+       0.8221,
+       5.4078
+      ]
+     ],
+     "height_m": 0.8,
+     "elevation_m": 0.0
+    },
+    {
+     "id": "F1_X15",
+     "type": "base_cabinet",
+     "raw_type": "FixedFurniture BaseCabinet",
+     "room_id": "F1_R8",
+     "polygon": [
+      [
+       1.2868,
+       4.9907
+      ],
+      [
+       0.7929,
+       4.9907
+      ],
+      [
+       0.7929,
+       5.3673
+      ],
+      [
+       1.2868,
+       5.3673
+      ]
+     ],
+     "height_m": 0.9,
+     "elevation_m": 0.0
+    },
+    {
+     "id": "F1_X16",
+     "type": "sink",
+     "raw_type": "FixedFurniture Sink",
+     "room_id": "F1_R8",
+     "polygon": [
+      [
+       1.2868,
+       4.9907
+      ],
+      [
+       0.7929,
+       4.9907
+      ],
+      [
+       0.7929,
+       5.3673
+      ],
+      [
+       1.2868,
+       5.3673
+      ]
+     ],
+     "height_m": 0.85,
+     "elevation_m": 0.0
+    },
+    {
+     "id": "F1_X17",
+     "type": "closet",
+     "raw_type": "FixedFurniture CoatCloset",
+     "room_id": "F1_R0",
+     "polygon": [
+      [
+       0.6782,
+       6.5184
+      ],
+      [
+       0.6782,
+       7.4657
+      ],
+      [
+       1.1826,
+       7.4657
+      ],
+      [
+       1.1826,
+       6.5184
+      ]
+     ],
+     "height_m": 2.1,
+     "elevation_m": 0.0
+    },
+    {
+     "id": "F1_X18",
+     "type": "closet",
+     "raw_type": "FixedFurniture Closet",
+     "room_id": "F1_R0",
+     "polygon": [
+      [
+       1.1826,
+       7.4664
+      ],
+      [
+       1.8481,
+       7.4664
+      ],
+      [
+       1.8481,
+       7.109
+      ],
+      [
+       1.1826,
+       7.109
+      ]
+     ],
+     "height_m": 2.1,
+     "elevation_m": 0.0
+    },
+    {
+     "id": "F1_X19",
+     "type": "closet",
+     "raw_type": "FixedFurniture Closet",
+     "room_id": "F1_R6",
+     "polygon": [
+      [
+       6.9898,
+       8.0514
+      ],
+      [
+       6.5567,
+       8.0514
+      ],
+      [
+       6.5567,
+       8.6508
+      ],
+      [
+       6.9898,
+       8.6508
+      ]
+     ],
+     "height_m": 2.1,
+     "elevation_m": 0.0
+    },
+    {
+     "id": "F1_X20",
+     "type": "closet",
+     "raw_type": "FixedFurniture CoatCloset",
+     "room_id": "F1_R6",
+     "polygon": [
+      [
+       6.5567,
+       8.0514
+      ],
+      [
+       5.6691,
+       8.0514
+      ],
+      [
+       5.6691,
+       8.6508
+      ],
+      [
+       6.5567,
+       8.6508
+      ]
+     ],
+     "height_m": 2.1,
+     "elevation_m": 0.0
+    },
+    {
+     "id": "F1_X21",
+     "type": "closet",
+     "raw_type": "FixedFurniture Closet",
+     "room_id": "F1_R6",
+     "polygon": [
+      [
+       5.6691,
+       8.0514
+      ],
+      [
+       5.236,
+       8.0514
+      ],
+      [
+       5.236,
+       8.6508
+      ],
+      [
+       5.6691,
+       8.6508
+      ]
+     ],
+     "height_m": 2.1,
+     "elevation_m": 0.0
     }
    ]
   }
