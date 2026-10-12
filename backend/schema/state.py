@@ -11,10 +11,9 @@ Rules:
   - furniture_state carries the user's wishes and own pieces into furniture_node,
     and what it placed in that same 3D model (staging + furnished walkthrough).
 """
+from __future__ import annotations
 from typing import Literal, TypedDict, List, Optional, Dict, Any, Annotated
 import operator
-
-from __future__ import annotations
 
 from typing import Literal, Optional, TypedDict
 
@@ -48,6 +47,7 @@ class PropertyItem(BaseModel):
     plan_path: Optional[str] = None
     cubicasa_id: Optional[int] = Field(default=None, description="CubiCasa dataset ID")
     image_path: Optional[str] = Field(default=None, description="Path of 2D Sketch")
+    svg_path: Optional[str] = Field(default=None, description="Path of 2D Sketch")
 
     
 
