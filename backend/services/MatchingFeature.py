@@ -56,7 +56,7 @@ class PropertyMatchingService:
                 return {
                 "total_found": len(self.df),
                 "used_fallback": False,
-                "properties": self.df.head(15).copy().to_dict(orient='records')
+                "properties": self.df.copy().to_dict(orient='records') #.head(15)
             }
 
             print(f"\n📥 [Input Req] Location: '{reqs.location}' | Max Budget: {reqs.budget_max} | Rooms: {reqs.bedrooms} | Area: {reqs.area_sqm}")
