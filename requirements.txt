@@ -44,3 +44,7 @@ soundfile
 pyannote.audio
 torchvision
 
+# Google Calendar API & OAuth
+google-api-python-client
+google-auth-oauthlib
+google-auth-httplib2
