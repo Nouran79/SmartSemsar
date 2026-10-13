@@ -44,7 +44,10 @@ def route_macro_intent(state: AgentState) -> str:
     elif intent == "sketch_based_search":
         return "sketch_to_svg"
 
-    elif intent in ["request_sketch_upload", "direct_sketch_staging"]: #route to S2 or S4
+    elif intent == "direct_sketch_staging":
+        return "3D design stage"
+
+    elif intent in ["request_sketch_upload"]: #route to S2 or S4
         # يتوقف الجراف وينتظر رفع الصورة من العميل في الـ UI
         return END
         
@@ -58,6 +61,7 @@ builder.add_conditional_edges(
         "user_enter_reqs_in_intent_detector": "detect_micro_intent",
         "sketch_to_svg": "sketch_to_svg",
         "Match_all_properties": "match_properties",
+        "3D design stage": "staging_3d",
         END: END
     }
 )

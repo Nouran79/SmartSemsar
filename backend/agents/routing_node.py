@@ -153,13 +153,23 @@ def supervisor_router_node(state: AgentState) -> dict:
     print("\n🧠 [Supervisor Router] Evaluating macro entry point...")
     user_query = state.get("user_query") or ""
     current_state = state.get("current_stage") or ""
+    macro_intent = state.get("macro_intent") or ""
     
+    if (current_state=="property_results_displayed") and (macro_intent=="general_browse"):
+        return {
+        "macro_intent": "direct_sketch_staging",
+        "micro_intent": "",
+        # "agent_response": result.suggested_reply,
+    }
+
     if current_state=="property_results_displayed":
         return {
         "macro_intent": "search_by_reqs",
         "micro_intent": "",
         # "agent_response": result.suggested_reply,
     }
+
+    
         
         
     has_sketch = bool(state.get("uploaded_sketch_path"))
