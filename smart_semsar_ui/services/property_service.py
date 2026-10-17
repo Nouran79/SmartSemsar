@@ -70,3 +70,25 @@ def search_properties(
     if min_bedrooms:
         results = [p for p in results if p["bedrooms"] >= min_bedrooms]
     return results
+
+
+def calculate_installments(
+    property_price: float,
+    down_payment_percent: float,
+    years: int,
+    annual_interest_rate: float,
+) -> dict:
+    down_payment = property_price * down_payment_percent / 100
+    remaining = property_price - down_payment
+    total_interest = remaining * annual_interest_rate / 100 * years
+    total_installments = remaining + total_interest
+    monthly_installment = total_installments / (years * 12)
+    total_cost = down_payment + total_installments
+    return {
+        "down_payment": down_payment,
+        "remaining": remaining,
+        "total_interest": total_interest,
+        "total_installments": total_installments,
+        "monthly_installment": monthly_installment,
+        "total_cost": total_cost,
+    }

@@ -217,9 +217,9 @@ cython_debug/
 .abstra/
 
 # Visual Studio Code
-#   Visual Studio Code specific template is maintained in a separate VisualStudioCode.gitignore 
+#   Visual Studio Code specific template is maintained in a separate VisualStudioCode.gitignore
 #   that can be found at https://github.com/github/gitignore/blob/main/Global/VisualStudioCode.gitignore
-#   and can be added to the global gitignore or merged into this file. However, if you prefer, 
+#   and can be added to the global gitignore or merged into this file. However, if you prefer,
 #   you could uncomment the following to ignore the entire vscode folder
 # .vscode/
 # Temporary file for partial code execution
@@ -253,3 +253,11 @@ smartsemsar-plan-3d-files/out/
 
 # inference.py / app.py results
 out/
+
+# Google Calendar OAuth credentials & tokens
+credentials.json
+client_secret*.json
+token.json
+token.pickle
+*google*credential*.json
+*google*token*.json

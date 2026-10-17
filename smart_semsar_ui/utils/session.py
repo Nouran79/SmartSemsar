@@ -17,6 +17,8 @@ def initialize_session_state() -> None:
             "purpose": "Family Living",
             "finishing": "Fully Finished",
             "payment_plan": "Installments",
+            "telegram_chat_id": None,
+            "telegram_username": None,
         },
         "properties": None,
         "selected_property_id": "PROP-001",
@@ -27,3 +29,14 @@ def initialize_session_state() -> None:
     for key, value in defaults.items():
         if key not in st.session_state:
             st.session_state[key] = value.copy() if isinstance(value, (dict, list)) else value
+
+
+def get_session_telegram_link(customer_id: str = "customer", force_new: bool = False) -> dict:
+    """Retrieve or generate the active Telegram linking token for the current user session."""
+    from services.telegram_service import generate_linking_token, get_linking_token_info
+
+    current = st.session_state.get("active_tg_link_info")
+    if force_new or not current or not get_linking_token_info(current.get("token", "")):
+        current = generate_linking_token(customer_id=customer_id)
+        st.session_state["active_tg_link_info"] = current
+    return current
