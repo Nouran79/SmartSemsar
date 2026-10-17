@@ -111,6 +111,7 @@ def select_property_node(state: AgentState) -> dict:
     print("finish selection node")
 
     return {
+        "selected_property_id": chosen_property.property_id,
         "selected_property": chosen_property,
         "current_stage": "property_selected"
     }
