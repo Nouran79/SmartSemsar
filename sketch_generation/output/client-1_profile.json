@@ -1,0 +1,48 @@
+{
+  "location": "New Alamein (North Coast)",
+  "budget_min": 20000000.0,
+  "budget_max": 30000000.0,
+  "area_sqm": 500.0,
+  "bedrooms": 6,
+  "property_type": "villa",
+  "purpose": "Luxury Coastal Vacation / Prime Investment",
+  "notes": "Client requested prime coastal proximity near New Alamein amusement & entertainment district. Requirements include exceptionally spacious suites, private landscaped garden, and swimming pool. Ground floor plan incorporates 3 oversized VIP bedroom suites, grand formal reception, and outdoor entertaining deck with pool; remaining 3 suites are designated on the first floor via the grand foyer staircase.",
+  "missing_fields": [],
+  "architectural_details": {
+    "floors": "Ground Floor (Level 0.00) + Upper Suite Level",
+    "spaces": [
+      {
+        "name": "Grand Reception & Living Room",
+        "dimensions": "10.0m x 7.5m (75.0 m²)"
+      },
+      {
+        "name": "Formal Dining Salon",
+        "dimensions": "6.5m x 5.0m (32.5 m²)"
+      },
+      {
+        "name": "Gourmet Chef Kitchen & Pantry",
+        "dimensions": "5.5m x 4.5m (24.7 m²)"
+      },
+      {
+        "name": "Ground VIP Master Suite 01",
+        "dimensions": "8.0m x 6.0m (48.0 m²)"
+      },
+      {
+        "name": "En-Suite Guest Suite 02",
+        "dimensions": "6.5m x 4.8m (31.2 m²)"
+      },
+      {
+        "name": "Garden Bedroom Suite 03",
+        "dimensions": "6.0m x 4.5m (27.0 m²)"
+      },
+      {
+        "name": "Upper Level (Suites 04, 05, 06)",
+        "dimensions": "Accessed via Grand Staircase (180.0 m²)"
+      },
+      {
+        "name": "Outdoor Pool & Pool Deck",
+        "dimensions": "14.0m x 6.0m (84.0 m²)"
+      }
+    ]
+  }
+}

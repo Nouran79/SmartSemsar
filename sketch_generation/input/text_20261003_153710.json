@@ -1,0 +1,13 @@
+{
+  "location": "العالمين",
+  "budget_min": 20000000.0,
+  "budget_max": 30000000.0,
+  "area_sqm": 500.0,
+  "bedrooms": 6,
+  "property_type": "villa",
+  "purpose": "unknown",
+  "notes": "قريبه من الملاهي, على البحر, الجنينه, الحمام السباحه, الغرف بتاعتها تكون كبيره",
+  "missing_fields": [
+    "purpose"
+  ]
+}

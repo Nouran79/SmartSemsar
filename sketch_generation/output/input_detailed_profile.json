@@ -1,0 +1,51 @@
+{
+  "location": "Alamein",
+  "budget_min": 25000000.0,
+  "budget_max": 35000000.0,
+  "area_sqm": 500.0,
+  "bedrooms": 4,
+  "property_type": "villa",
+  "purpose": "Luxury Beachfront Vacation",
+  "notes": "Direct sea view, spacious single-level luxury layout, private pool deck, landscaped garden, open-plan entertainer reception and chef kitchen.",
+  "missing_fields": [],
+  "architectural_details": {
+    "floors": "Ground Floor Luxury Villa",
+    "spaces": [
+      {
+        "name": "Master Suite",
+        "dimensions": "8.0m x 6.0m",
+        "features": "King-size bed, twin nightstands, en-suite spa bathroom, walk-in closet, direct panoramic sea view terrace"
+      },
+      {
+        "name": "Grand Reception & Living",
+        "dimensions": "11.0m x 7.0m",
+        "features": "L-shaped designer sectional, 8-seater dining table, seamless glass wall to infinity pool and sun deck"
+      },
+      {
+        "name": "Chef Kitchen",
+        "dimensions": "5.5m x 4.0m",
+        "features": "Central cooking island with bar stools, prep counters, sink, built-in cooktop, open-plan connection to dining"
+      },
+      {
+        "name": "Junior Bedroom 1",
+        "dimensions": "5.0m x 4.5m",
+        "features": "Twin single beds, bedside tables, study workstation, fitted wardrobe"
+      },
+      {
+        "name": "Junior Bedroom 2",
+        "dimensions": "5.0m x 4.5m",
+        "features": "Queen bed, nightstands, integrated wardrobe, vanity table"
+      },
+      {
+        "name": "Guest Bedroom",
+        "dimensions": "4.5m x 4.0m",
+        "features": "Double bed, private en-suite bathroom, reading corner"
+      },
+      {
+        "name": "Private Infinity Pool & Sun Deck",
+        "dimensions": "14.0m x 5.0m",
+        "features": "Lap pool with shallow lounge shelf, teakwood decking, 4 sun loungers, outdoor shower"
+      }
+    ]
+  }
+}

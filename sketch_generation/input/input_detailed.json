@@ -1,0 +1,49 @@
+{
+  "location": "Alamein",
+  "budget_min": 25000000.0,
+  "budget_max": 35000000.0,
+  "area_sqm": 500.0,
+  "bedrooms": 4,
+  "property_type": "villa",
+  "purpose": "Luxury Beachfront Vacation",
+  "notes": "Direct sea view, spacious layout, private pool and garden",
+  "missing_fields": [],
+  "user_custom_rooms": [
+    {
+      "name": "Master Suite",
+      "width_m": 8.0,
+      "length_m": 6.0,
+      "details": "King bed, private luxury bathroom, sea view window"
+    },
+    {
+      "name": "Junior Bedroom 1",
+      "width_m": 5.0,
+      "length_m": 4.5,
+      "details": "Two single beds with study desk"
+    },
+    {
+      "name": "Junior Bedroom 2",
+      "width_m": 5.0,
+      "length_m": 4.5,
+      "details": "Double bed and wardrobe"
+    },
+    {
+      "name": "Guest Bedroom",
+      "width_m": 4.5,
+      "length_m": 4.0,
+      "details": "En-suite bathroom for guests"
+    },
+    {
+      "name": "Grand Reception & Living",
+      "width_m": 11.0,
+      "length_m": 7.0,
+      "details": "Large L-shaped sofa, dining area, facing pool terrace"
+    },
+    {
+      "name": "Chef Kitchen",
+      "width_m": 5.5,
+      "length_m": 4.0,
+      "details": "Open American style with kitchen island and stools"
+    }
+  ]
+}

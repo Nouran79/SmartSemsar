@@ -1,0 +1,56 @@
+{
+  "location": "New Alamein City (North Coast, Egypt)",
+  "budget_min": 20000000.0,
+  "budget_max": 30000000.0,
+  "area_sqm": 500.0,
+  "bedrooms": 6,
+  "property_type": "Luxury Beachfront Villa",
+  "purpose": "Primary Luxury Summer Residence & High-Yield Coastal Investment",
+  "notes": "Premium prime beachfront estate situated adjacent to the New Alamein entertainment hub and seaside amusement parks. Designed with 6 generous bedroom suites, grand open-concept salon facing the sea, private infinity pool, sun deck, expansive manicured landscaped gardens, and outdoor entertainment terrace.",
+  "missing_fields": [],
+  "architectural_details": {
+    "floors": "Ground Floor Plan (Expanded Footprint)",
+    "spaces": [
+      {
+        "name": "Grand Ocean Salon & Living Room",
+        "dimensions": "11.5m x 6.5m"
+      },
+      {
+        "name": "Formal Dining & Show Kitchen",
+        "dimensions": "8.0m x 5.5m"
+      },
+      {
+        "name": "Master Seafront Suite 01",
+        "dimensions": "6.0m x 5.0m"
+      },
+      {
+        "name": "Junior Ocean Suite 02",
+        "dimensions": "5.2m x 4.8m"
+      },
+      {
+        "name": "Guest Bedroom Suite 03",
+        "dimensions": "5.0m x 4.5m"
+      },
+      {
+        "name": "Guest Bedroom Suite 04",
+        "dimensions": "4.8m x 4.2m"
+      },
+      {
+        "name": "Garden Bedroom Suite 05",
+        "dimensions": "4.8m x 4.2m"
+      },
+      {
+        "name": "Family Suite 06",
+        "dimensions": "4.8m x 4.0m"
+      },
+      {
+        "name": "Private Infinity Pool & Deck",
+        "dimensions": "14.0m x 5.0m"
+      },
+      {
+        "name": "Landscape Lawn & Coastal Veranda",
+        "dimensions": "Full Perimeter"
+      }
+    ]
+  }
+}
