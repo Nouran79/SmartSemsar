@@ -9,6 +9,39 @@ from typing import Optional, Literal, List, Dict, Any
 from pydantic import BaseModel, Field
 
 
+# العميل بيكتب المكان بالعربي والداتا بالإنجليزي، والـ embeddings مش بتربطهم كويس ("الشيخ زايد" كانت بتجيب الزمالك):
+# كلمة عربية -> أسماء المكان زي ما هي مكتوبة في عمود location
+LOCATION_ALIASES = {
+    "التجمع الخامس": ["The 5th Settlement"], "التجمع الاول": ["The 1st Settlement"], "التجمع": ["Settlement", "New Cairo"],
+    "القاهرة الجديدة": ["New Cairo"], "نيو كايرو": ["New Cairo"], "القطامية": ["Katameya"], "الرحاب": ["Rehab"],
+    "مدينتي": ["Madinaty"], "اللوتس": ["Lotus"], "النرجس": ["Narges"], "الاندلس": ["Andalus"], "هايد بارك": ["Hyde Park"],
+    "زايد": ["Sheikh Zayed"], "اكتوبر": ["6 October"], "المعادي": ["Maadi"], "دجلة": ["Degla"], "الزمالك": ["Zamalek"],
+    "جاردن سيتي": ["Garden City"], "مدينة نصر": ["Nasr City"], "الهرم": ["Haram"], "المقطم": ["Mokattam"],
+    "اسكندرية": ["Alexandria"], "الاسكندرية": ["Alexandria"], "سموحة": ["Smouha"], "الشيخ زايد": ["Sheikh Zayed"],
+}
+
+
+# المساحة اللي العميل قالها ± 10% (180 متر -> من 162 لـ 198)
+AREA_TOLERANCE = 0.10
+
+# نوع العقار من العنوان (الداتا مفيهاش عمود للنوع)
+PROPERTY_TYPE_WORDS = {
+    "studio": ["studio"],
+    "villa": ["villa", "stand alone", "standalone"],
+    "duplex": ["duplex"],
+    "townhouse": ["townhouse", "town house"],
+}
+
+
+def location_keywords(location_query: str) -> list:
+    """الأسماء الإنجليزية للمكان اللي العميل كتبه (أطول تطابق الأول: "التجمع الخامس" قبل "التجمع")"""
+    q = str(location_query).replace("أ", "ا").replace("إ", "ا").replace("آ", "ا")
+    for arabic in sorted(LOCATION_ALIASES, key=len, reverse=True):
+        if arabic in q:
+            return LOCATION_ALIASES[arabic]
+    return []
+
+
 class PropertyMatchingService:
     def __init__(self, csv_path: str, chroma_path: str):
         print("---enter---")
@@ -26,99 +59,85 @@ class PropertyMatchingService:
             name="properties_semantic", 
             embedding_function=self.ef
         )
+        # الـ index مش بيترفع على git: لو فاضي (أول تشغيل على جهاز جديد)، نبنيه من الـ CSV،
+        # وإلا ترتيب المكان بيرجع فاضي وكل بحث بيطلع 0 نتيجة
+        if self.collection.count() == 0:
+            self._build_location_index()
         print("---final---")
 
-    def _filter_dataframe( self, max_price: float = None, bedrooms: int = None, area: float = None,ignore_rooms_and_area: bool = False) -> list:
-        filtered = self.df.copy()
-        print("---filter---")
+    def _build_location_index(self):
+        """نفس اللي بيعمله data/scripts/index_embeddings.py: الموقع كنص + property_id كـ metadata للفلترة"""
+        print(f"📦 Building location index for {len(self.df)} properties...")
+        ids, documents, metadatas = [], [], []
+        for idx, row in self.df.iterrows():
+            prop_id = str(row.get('property_id', idx))
+            location = str(row['location']) if pd.notna(row.get('location')) else ''
+            ids.append(prop_id)
+            documents.append(location.strip(" |") or "عقار بدون عنوان تفصيلي")
+            metadatas.append({"property_id": prop_id, "location": location})
+        for i in range(0, len(ids), 250):
+            self.collection.add(ids=ids[i:i + 250], documents=documents[i:i + 250],
+                                metadatas=metadatas[i:i + 250])
 
-        # 1. الحفاظ على شرط السعر دائمًا (Budget Strict Filter)
-        if max_price and max_price > 0:
-            filtered = filtered[filtered['price'] <= (max_price+max_price*0.10)]
+    def _filter_dataframe(self, reqs: CustomerRequirements) -> pd.DataFrame:
+        """كل اللي العميل قاله شرط لازم يتحقق (مفيش تنازل عن أي شرط لو النتايج قليلة):
+        الميزانية (أقصى وأدنى)، عدد الغرف بالظبط، المساحة في حدود AREA_TOLERANCE، ونوع العقار"""
+        df = self.df
+        if reqs.budget_max:
+            df = df[df['price'] <= reqs.budget_max]
+        if reqs.budget_min:
+            df = df[df['price'] >= reqs.budget_min]
+        if reqs.bedrooms:
+            df = df[df['pf_bedrooms'] == reqs.bedrooms]
+        if reqs.area_sqm:
+            df = df[(df['pf_area_sqm'] - reqs.area_sqm).abs() <= reqs.area_sqm * AREA_TOLERANCE]
+        type_words = PROPERTY_TYPE_WORDS.get(reqs.property_type)
+        if type_words:          # شقة عادية مش بنفلترها: أغلب العناوين مش بتقول "apartment"
+            df = df[df['title'].fillna('').str.contains('|'.join(type_words), case=False, regex=True)]
+        return df
 
-        # 2. تطبيق شروط الغرف والمساحة فقط في المحاولة الأولى
-        if not ignore_rooms_and_area:
-            if bedrooms and 'pf_bedrooms' in filtered.columns:
-                filtered = filtered[filtered['pf_bedrooms'] == bedrooms]
-
-            if area and 'pf_area_sqm' in filtered.columns:
-                filtered = filtered[(filtered['pf_area_sqm'] >= (area-(area*0.15)) )& (filtered['pf_area_sqm'] <=  (area+(area*0.15)))]
-
-        # إرجاع قائمة الـ IDs المطابقة للـ Hard Constraints
-        return filtered['property_id'].astype(str).tolist()
-    
-
-    def search_properties(self, reqs: CustomerRequirements={},Purpose: str="", min_results_threshold: int = 3) -> dict:
-            """
-            البحث الذكي ثنائي المرحلة مع آلية التنازل التدريجي (Fallback)
-            """
-            if Purpose=="general_browse":
-                return {
+    def search_properties(self, reqs: CustomerRequirements = None, Purpose: str = "", top_k: int = 5) -> dict:
+        """الشقق اللي بتحقق كل طلبات العميل، الأقرب للمساحة المطلوبة الأول. لو مفيش، بترجع فاضية"""
+        if Purpose == "general_browse":
+            return {
                 "total_found": len(self.df),
                 "used_fallback": False,
-                "properties": self.df.copy().to_dict(orient='records') #.head(15)
+                "properties": self.df.copy().to_dict(orient='records')
             }
 
-            print(f"\n📥 [Input Req] Location: '{reqs.location}' | Max Budget: {reqs.budget_max} | Rooms: {reqs.bedrooms} | Area: {reqs.area_sqm}")
-            
-    
-            # -------------------------------------------------------------------
-            # 🟢 المحاولة الأولى: الفلترة الصارمة (Strict Search)
-            # -------------------------------------------------------------------
-            print("🔍 [Attempt 1] جاري الفلترة الصارمة (السعر + الغرف + المساحة)...")
-            candidate_ids = self._filter_dataframe(
-                max_price=reqs.budget_max,
-                bedrooms=reqs.bedrooms,
-                area=reqs.area_sqm,
-                ignore_rooms_and_area=False
-            )
+        print(f"\n📥 [Input Req] Location: '{reqs.location}' | Budget: {reqs.budget_min}-{reqs.budget_max} | "
+              f"Rooms: {reqs.bedrooms} | Area: {reqs.area_sqm} | Type: {reqs.property_type}")
+        candidates = self._filter_dataframe(reqs)
+        results = self._rank_by_location(reqs.location, candidates, reqs.area_sqm, top_k)
+        print(f"✅ {len(results)} matching properties")
+        return {"total_found": len(results), "used_fallback": False, "properties": results}
 
-            results = self._rank_by_location_embeddings(reqs.location, candidate_ids)
-
-            # -------------------------------------------------------------------
-            # 🟡 المحاولة الثانية: Fallbacks (الحفاظ على السعر والمكان مع إلغاء باقي الشروط)
-            # -------------------------------------------------------------------
-            used_fallback = False
-            if len(results) < min_results_threshold:
-                used_fallback = True
-                print(f"⚠️ النتائج غير كافية ({len(results)} عقارات). جاري تطبيق الـ Fallback Strategy...")
-                print("🔄 [Attempt 2] الحفاظ على السعر والمكان، مع التنازل عن الغرف والمساحة...")
-
-                fallback_candidate_ids = self._filter_dataframe(
-                    max_price=reqs.budget_max,
-                    ignore_rooms_and_area=True  # إلغاء قيود الغرف والمساحة
-                )
-
-                results = self._rank_by_location_embeddings(reqs.location, fallback_candidate_ids)
-
-            return {
-                "total_found": len(results),
-                "used_fallback": used_fallback,
-                "properties": results
-            }
-
-    def _rank_by_location_embeddings(self, location_query: str, candidate_ids: list, top_k: int = 5) -> list:
-        """ترتيب قائمة العقارات المرشحة باستخدام Vector Similarity في ChromaDB"""
-        print("lllllllllllllllllllll")
-        if not candidate_ids:
+    def _rank_by_location(self, location_query: str, candidates: pd.DataFrame, target_area: float = None,
+                          top_k: int = 5) -> list:
+        """المكان: لو اسمه معروف (زايد، التجمع، المعادي...) الشقق لازم تكون فيه؛ لو مش معروف،
+        الـ embeddings بتجيب الأقرب. وبعدها الأقرب للمساحة المطلوبة (أو الأرخص) الأول"""
+        if candidates.empty:
             return []
 
-        # إذا لم يحدد المستخدم مكانًا، نرجع نتائج الفلترة المباشرة
-        if not location_query:
-            return self.df[self.df['property_id'].astype(str).isin(candidate_ids[:top_k])].to_dict(orient='records')
+        if location_query:
+            keywords = location_keywords(location_query)
+            if keywords:
+                in_area = candidates['location'].fillna('').str.contains('|'.join(keywords), case=False, regex=True)
+                candidates = candidates[in_area]
+            elif self.collection.count():
+                ids = candidates['property_id'].astype(str).tolist()
+                chroma_results = self.collection.query(
+                    query_texts=[location_query], where={"property_id": {"$in": ids}},
+                    n_results=min(top_k, len(ids)))
+                matched_ids = chroma_results['ids'][0] if chroma_results['ids'] else []
+                candidates = candidates[candidates['property_id'].astype(str).isin(matched_ids)]
 
-        # استعلام ChromaDB بالـ Embeddings مع تحديد الـ IDs المفلترة مسبقاً (Where Metadata)
-        chroma_results = self.collection.query(
-            query_texts=[location_query], # يعمل سواء النص عربي أو إنجليزي
-            where={"property_id": {"$in": candidate_ids}},
-            n_results=min(top_k, len(candidate_ids))
-        )
-
-        matched_ids = chroma_results['ids'][0] if chroma_results['ids'] else []
-
-        # جلب تفاصيل العقارات الكاملة من الـ DataFrame مرتبة حسب تشابه المكان
-        matched_df = self.df[self.df['property_id'].astype(str).isin(matched_ids)]
-        return matched_df.to_dict(orient='records')
+        if target_area:
+            candidates = candidates.assign(_diff=(candidates['pf_area_sqm'] - target_area).abs())
+            candidates = candidates.sort_values(['_diff', 'price']).drop(columns='_diff')
+        else:
+            candidates = candidates.sort_values('price')
+        return candidates.head(top_k).to_dict(orient='records')
     
     def get_property_by_id(self, property_id: str) -> dict:
         matched = self.df[self.df['property_id'].astype(str) == str(property_id)]

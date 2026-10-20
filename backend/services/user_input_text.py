@@ -56,8 +56,28 @@ def transcribe_audio(file_path: str) -> str:
     return " ".join(s.text.strip() for s in segments).strip()
 
 
+VOICE_PROMPT = "طلب عقاري بالعامية المصرية: شقة، فيلا، دوبلكس، أوض نوم، ميزانية، مليون، متر، التجمع، الشيخ زايد، تشطيب، تقسيط."
+
+
+def transcribe_voice_note(file_path: str) -> str:
+    """تسجيل المستخدم من الشات -> نص. Groq Whisper الأول (أسرع وأدق في العربي)،
+    ولو مفيش GROQ_API_KEY أو فشل، faster-whisper على الجهاز."""
+    import os
+    if os.getenv("GROQ_API_KEY"):
+        try:
+            from groq import Groq
+            with open(file_path, "rb") as f:
+                result = Groq().audio.transcriptions.create(
+                    file=(os.path.basename(file_path), f.read()),
+                    model="whisper-large-v3", prompt=VOICE_PROMPT, temperature=0)
+            return (result.text or "").strip()
+        except Exception as e:
+            print(f"Groq transcription failed, using local Whisper: {e}")
+    return transcribe_audio(file_path)
+
+
 # ---------- 3) LLM extraction (Ollama) ----------
-MODEL_NAME = "qwen2.5:1.5b"
+MODEL_NAME = "qwen2.5"      # المتسطب على الجهاز (ollama list)
 # "qwen2.5"
 # model=
 SYSTEM_PROMPT = '''You are a real-estate intake assistant.
@@ -76,6 +96,7 @@ JSON object matching this exact schema, no prose, no markdown fences:
   "bedrooms": integer or null,
   "property_type": one of ["apartment","villa","duplex","studio","townhouse","unknown"],
   "purpose": one of ["living","investment","unknown"],
+  "deal_type": one of ["rent","buy","unknown"],
   "notes": string or null,
   "missing_fields": array of field names you could not determine
 }
@@ -83,11 +104,14 @@ JSON object matching this exact schema, no prose, no markdown fences:
 Rules:
 - Never invent values. If a field is not mentioned, set it to null and add its name to missing_fields.
 - Numbers must be plain numbers (no currency symbols, no commas).
+- Budgets are full Egyptian pounds: "5 مليون" / "5 million" -> 5000000, "800 ألف" / "800k" -> 800000.
+- A single budget figure ("بميزانية 5 مليون", "up to 5 million") is budget_max only; set budget_min only for a range or an explicit minimum.
 - Keep the "location" and "notes" values in their original language as stated by the customer.
 - Respond in JSON only.
 - Use "notes" ONLY for extra customer requirements that do not fit any other field (for example: near schools, quiet area, high floor).
 - Never copy budget, area, bedrooms, or location text into "notes". If there is nothing extra, set "notes" to null.
 - Do NOT guess "property_type" or "purpose". Use "unknown" unless the customer clearly states them.
+- "deal_type": "rent" for إيجار / ايجار / أأجر / rent, "buy" for تمليك / شراء / اشتري / أشتري / buy; otherwise "unknown" (a budget alone does not decide it).
 '''
 
 
@@ -106,17 +130,30 @@ def build_user_prompt(call_transcript=None, raw_text=None) -> str:
 #     temperature=0
 # )
 
-def extract_requirements(call_transcript=None, raw_text=None) -> CustomerRequirements:
+def _llm_json(messages) -> str:
+    """رد الموديل كـ JSON: Groq الأول (سريع ومفتاحه في .env)، ولو مش موجود أو فشل، Ollama على الجهاز
+    (SMARTSEMSAR_OLLAMA_MODEL لو حابة تغيري الموديل المتسطب)"""
+    import os
+    if os.getenv("GROQ_API_KEY"):
+        try:
+            from groq import Groq
+            response = Groq().chat.completions.create(
+                model=os.getenv("SMARTSEMSAR_GROQ_MODEL", "openai/gpt-oss-120b"),
+                messages=messages, response_format={"type": "json_object"}, temperature=0)
+            return response.choices[0].message.content
+        except Exception as e:
+            print(f"Groq extraction failed, using Ollama: {e}")
     response = ollama.chat(
-        model=MODEL_NAME,
-        format="json",
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": build_user_prompt(call_transcript, raw_text)},
-        ],
-        options={"temperature": 0},
-    )
-    raw_content = response["message"]["content"]
+        model=os.getenv("SMARTSEMSAR_OLLAMA_MODEL", MODEL_NAME),
+        format="json", messages=messages, options={"temperature": 0})
+    return response["message"]["content"]
+
+
+def extract_requirements(call_transcript=None, raw_text=None) -> CustomerRequirements:
+    raw_content = _llm_json([
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": build_user_prompt(call_transcript, raw_text)},
+    ])
     try:
         parsed = json.loads(raw_content)
     except json.JSONDecodeError:
@@ -126,7 +163,7 @@ def extract_requirements(call_transcript=None, raw_text=None) -> CustomerRequire
     req = CustomerRequirements(**parsed)
 
     fields = ["location", "budget_min", "budget_max", "area_sqm",
-              "bedrooms", "property_type", "purpose", "notes"]
+              "bedrooms", "property_type", "purpose", "deal_type", "notes"]
     req.missing_fields = [f for f in fields if getattr(req, f) in (None, "unknown")]
 
     return req

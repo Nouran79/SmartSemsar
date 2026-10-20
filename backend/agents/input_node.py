@@ -18,6 +18,30 @@ from typing import Optional, Literal, List, Dict, Any
 from langgraph.types import interrupt
 
 
+def has_requirements(req) -> bool:
+    """فيه مواصفة واحدة على الأقل اتفهمت من كلام العميل؟ (نوع العقار لوحده مش كفاية:
+    "عايزة أدور على شقة" بيطلع apartment ومفيهوش مواصفات)"""
+    if req is None:
+        return False
+    fields = ["location", "budget_min", "budget_max", "area_sqm", "bedrooms"]
+    return any(getattr(req, f, None) not in (None, "unknown") for f in fields)
+
+
+ASK_SPECS = ("تمام 👌 اكتبلي مواصفات الشقة اللي بتدور عليها: المنطقة، الميزانية، عدد الغرف، "
+             "والمساحة لو تحب. وكمان عايزها إيجار ولا تمليك؟")
+ASK_SPECS_AGAIN = "مش واضحلي المواصفات، ممكن تكتبلي المنطقة أو الميزانية أو عدد الغرف؟"
+
+
+def deal_type_from(text: str) -> Optional[str]:
+    """رد العميل على "إيجار ولا تمليك؟" من الكلمات نفسها (من غير ما نسأل الموديل)"""
+    t = (text or "").replace("إ", "ا").replace("أ", "ا").lower()
+    if any(w in t for w in ["ايجار", "اجار", "rent"]):
+        return "rent"
+    if any(w in t for w in ["تمليك", "شراء", "اشتري", "اشترى", "buy"]):
+        return "buy"
+    return None
+
+
 def input_node(state: AgentState) -> Dict[str, Any]:
     
     print("🔥 ANA HENNA EL-GADEED 🔥")  # سطر مميز جداً عشان نتأكد إنه شايف الملف
@@ -29,12 +53,27 @@ def input_node(state: AgentState) -> Dict[str, Any]:
     # لو البحث جديد، نجبره يقف هنا وما يكملش تحت
     if micro_intent in ["new_search", "modify_search"]:
         print("🔄 [RESET] Force resetting in input_node...")
-        
-        user_response = interrupt("تمام، هبدأ معاك بحث جديد. اكتب لي المواصفات الجديدة:")
-        resumed_text = user_response.strip() if isinstance(user_response, str) else None
-        
-        req = extract_requirements(call_transcript=None, raw_text=resumed_text)
-        
+
+        # الرسالة نفسها فيها المواصفات ("عايز شقة 3 غرف في التجمع")؟ نستخدمها على طول،
+        # ونسأله بس لو كتب حاجة زي "عايز أدور على شقة" من غير مواصفات (لحد 3 مرات)
+        resumed_text = (state.get("user_query") or "").strip() or None
+        req = extract_requirements(call_transcript=None, raw_text=resumed_text) if resumed_text else None
+        for attempt in range(3):
+            if has_requirements(req):
+                break
+            user_response = interrupt(ASK_SPECS if attempt == 0 else ASK_SPECS_AGAIN)
+            resumed_text = user_response.strip() if isinstance(user_response, str) else None
+            req = extract_requirements(call_transcript=None, raw_text=resumed_text) if resumed_text else None
+
+        # والشقق مبتطلعش غير لما نعرف هو عايزها إيجار ولا تمليك
+        if req is not None and req.deal_type in (None, "unknown"):
+            answer = interrupt("تمام 👌 وعايز الشقة إيجار ولا تمليك؟")
+            answer = answer.strip() if isinstance(answer, str) else ""
+            req.deal_type = deal_type_from(answer) or extract_requirements(raw_text=answer).deal_type
+            if req.deal_type in (None, "unknown"):
+                req.deal_type = "rent"          # رد مش مفهوم: كل الشقق عندنا إيجار، فنعرضها
+            resumed_text = f"{resumed_text} - {answer}" if resumed_text else answer
+
         return {
             "user_req_text": resumed_text,
             "user_query": resumed_text,

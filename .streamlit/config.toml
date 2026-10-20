@@ -2,3 +2,9 @@
 [server]
 runOnSave = true
 headless = true
+
+# الواجهة مصممة على خلفية فاتحة: من غير ده Streamlit بياخد الـ dark mode من الويندوز والكلام بيبقى أبيض على بيج
+[theme]
+base = "light"
+primaryColor = "#aa771c"
+textColor = "#2c2c2c"

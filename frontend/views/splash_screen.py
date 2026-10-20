@@ -1,6 +1,9 @@
 import streamlit as st
 import base64
 import os
+import time
+
+LOADED_AT = time.time()     # app.py بيقارنه بتاريخ الملف عشان يعيد تحميله لو اتعدل
 
 def get_base64_of_bin_file(bin_file):
     if not os.path.exists(bin_file):

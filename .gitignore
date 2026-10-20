@@ -262,3 +262,6 @@ token.json
 token.pickle
 *google*credential*.json
 *google*token*.json
+
+# Telegram username -> chat id of the customers who used the bot (personal data, made on each machine)
+data/telegram_users.json

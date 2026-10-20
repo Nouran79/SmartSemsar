@@ -1,0 +1,522 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+</head>
+<body>
+<title>Walkthrough PROP_1078</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600&display=swap">
+<style>
+  /* Layout: full-bleed 3D canvas, drafting-sheet HUD pinned to the corners. */
+  :root {
+    --paper: #f3f2ee;          /* HUD panel ground */
+    --ink: #1f2a30;            /* text */
+    --muted: #5d6a70;          /* secondary text */
+    --rule: #c9cdc8;           /* hairlines */
+    --accent: #2f6f8f;         /* blueprint blue: active controls */
+    --warn-bg: #fbecc8;        /* source warning band */
+    --warn-ink: #5a4310;
+    --scene-bg: #dfe6ea;       /* canvas ground behind the model */
+    --display: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
+    --body: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #1d2427; --ink: #e6ebec; --muted: #9aa8ad; --rule: #3a464b;
+      --accent: #7fb6d2; --warn-bg: #3d3216; --warn-ink: #f2d796; --scene-bg: #2a3236;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #1d2427; --ink: #e6ebec; --muted: #9aa8ad; --rule: #3a464b;
+    --accent: #7fb6d2; --warn-bg: #3d3216; --warn-ink: #f2d796; --scene-bg: #2a3236;
+    color-scheme: dark;
+  }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--scene-bg); color: var(--ink); font: 15px/1.4 var(--body); overflow: hidden; }
+  #stage { position: fixed; inset: 0; touch-action: none; }
+  #stage canvas { display: block; width: 100%; height: 100%; }
+
+  .panel { background: color-mix(in srgb, var(--paper) 92%, transparent); border: 1px solid var(--rule);
+           border-radius: 6px; backdrop-filter: blur(6px); }
+  .label { font: 600 12px/1 var(--display); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+
+  #top { position: fixed; left: 16px; right: 16px; top: calc(12px + env(safe-area-inset-top, 0px));
+         display: flex; flex-direction: column; gap: 8px; pointer-events: none; max-width: 640px; }
+  #listing { padding: 10px 14px; pointer-events: auto; }
+  #listing h1 { margin: 2px 0 0; font: 600 20px/1.15 var(--display); text-wrap: balance; }
+  #listing .meta { color: var(--muted); font-size: 13px; margin-top: 2px; }
+  #warning { background: var(--warn-bg); color: var(--warn-ink); border-radius: 6px; padding: 8px 12px;
+             font-size: 13px; pointer-events: auto; }
+  #warning b { font-family: var(--display); letter-spacing: .04em; text-transform: uppercase; margin-right: 6px; }
+
+  #room { position: fixed; left: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); padding: 10px 14px; min-width: 150px; }
+  #room-name { font: 600 24px/1.1 var(--display); margin-top: 4px; }
+  #room-meta { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+
+  #controls { position: fixed; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+              display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+  .seg { display: flex; padding: 3px; gap: 3px; }
+  .seg button { font: 600 13px/1 var(--display); letter-spacing: .06em; text-transform: uppercase;
+                border: 0; background: transparent; color: var(--ink); padding: 9px 12px; border-radius: 4px; cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: var(--paper); }
+  .seg button:focus-visible, #start:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  #start-wrap { position: fixed; left: 16px; right: 16px; bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+                display: flex; justify-content: center; pointer-events: none; }
+  #start { pointer-events: auto; font: 600 18px/1 var(--display); letter-spacing: .06em; text-transform: uppercase;
+           background: var(--accent); color: var(--paper); border: 0; border-radius: 6px; padding: 14px 22px; cursor: pointer; }
+  #help { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+          padding: 8px 12px; font-size: 13px; color: var(--muted); white-space: nowrap; }
+  #crosshair { position: fixed; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px;
+               border-radius: 50%; background: var(--paper); box-shadow: 0 0 0 1px var(--ink); pointer-events: none; }
+  .tag { position: fixed; transform: translate(-50%, -50%); font: 600 12px/1.1 var(--display); letter-spacing: .05em;
+         text-transform: uppercase; color: var(--ink); background: var(--paper); padding: 3px 6px; border-radius: 3px;
+         pointer-events: none; white-space: nowrap; border: 1px solid var(--rule); }
+  .tag small { display: block; font: 500 11px/1.1 var(--body); text-transform: none; letter-spacing: 0; color: var(--muted);
+               font-variant-numeric: tabular-nums; }
+  #error { position: fixed; inset: auto 16px 50% 16px; padding: 14px; text-align: center; }
+
+  @media (max-width: 720px) {
+    #help { display: none; }
+    #controls { left: 16px; flex-direction: row; justify-content: space-between; align-items: flex-end; }
+    #room { bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
+    #start-wrap { bottom: calc(160px + env(safe-area-inset-bottom, 0px)); }
+    #listing h1 { font-size: 17px; }
+    #room { min-width: 0; }
+    #room-name { font-size: 20px; }
+  }
+</style>
+
+<div id="stage" aria-label="3D walkthrough of the floor plan"></div>
+
+<div id="top">
+  <div id="listing" class="panel">
+    <div class="label" id="listing-id"></div>
+    <h1 id="listing-title"></h1>
+    <div class="meta" id="listing-meta"></div>
+  </div>
+  <div id="warning" role="note"><b>Layout</b><span id="warning-text"></span></div>
+</div>
+
+<div id="room" class="panel" aria-live="polite">
+  <div class="label" id="room-floor">Overview</div>
+  <div id="room-name">Whole plan</div>
+  <div id="room-meta"></div>
+</div>
+
+<div id="controls">
+  <div class="seg panel" id="floors" role="group" aria-label="Floor"></div>
+  <div class="seg panel" id="furniture-seg" role="group" aria-label="Furniture" hidden>
+    <button id="toggle-furniture" aria-pressed="true">Furniture</button>
+  </div>
+  <div class="seg panel" role="group" aria-label="View mode">
+    <button id="mode-overview" aria-pressed="true">Overview</button>
+    <button id="mode-walk" aria-pressed="false">Walk</button>
+  </div>
+</div>
+
+<div id="start-wrap"><button id="start">Start walkthrough</button></div>
+<div id="help" class="panel" hidden></div>
+<div id="crosshair" hidden></div>
+<div id="error" class="panel" hidden></div>
+
+<script type="application/json" id="plan-data">{"schema_version": 1, "plan_id": "PROP_1078_cubicasa_9623", "source": "cubicasa_lookalike", "source_ref": "cubicasa:9623", "listing_id": "PROP_1078", "scale": {"method": "fit_listing_area", "native_px_per_m": 100.0, "factor": 1.9042, "native_area_sqm": 49.64, "target_area_sqm": 180.0}, "floors": [{"level": 0, "name": "Floor-1", "rooms": [{"id": "F0_R0", "type": "entry", "raw_type": "Space Entry Lobby", "polygon": [[11.2083, 3.0804], [9.4116, 3.0804], [9.4116, 4.4192], [9.9122, 4.4192], [9.9122, 4.5144], [11.2083, 4.5144]], "area_sqm": 2.53}, {"id": "F0_R1", "type": "entry", "raw_type": "Space Entry Lobby", "polygon": [[10.6495, 7.0877], [11.2083, 7.0877], [11.2083, 4.5144], [9.4116, 4.5144], [9.4116, 6.68], [8.0217, 8.0229], [9.7724, 8.0229]], "area_sqm": 6.3}, {"id": "F0_R2", "type": "living", "raw_type": "Space LivingRoom", "polygon": [[9.7724, 8.0229], [3.2923, 8.0229], [3.2923, 13.234], [0.457, 13.234], [0.457, 16.246], [9.7724, 16.246]], "area_sqm": 61.83}, {"id": "F0_R3", "type": "kitchen", "raw_type": "Space Kitchen", "polygon": [[3.2923, 8.0229], [0.457, 8.0229], [0.457, 13.234], [3.2923, 13.234]], "area_sqm": 14.78}, {"id": "F0_R4", "type": "bedroom", "raw_type": "Space Bedroom", "polygon": [[5.1967, 3.0804], [0.457, 3.0804], [0.457, 7.8515], [5.1967, 7.8515]], "area_sqm": 22.61}, {"id": "F0_R5", "type": "bedroom", "raw_type": "Space Bedroom", "polygon": [[9.2783, 6.6233], [9.2783, 3.0804], [5.349, 3.0804], [5.349, 7.8515], [8.0072, 7.8515]], "area_sqm": 17.97}, {"id": "F0_R6", "type": "other", "raw_type": "Space Elevated", "polygon": [[18.8125, 9.9501], [15.166, 9.9501], [15.166, 13.496], [18.8125, 13.496]], "area_sqm": 12.93}, {"id": "F0_R7", "type": "bathroom", "raw_type": "Space Bath", "polygon": [[13.6868, 9.5928], [9.9247, 9.5928], [9.9247, 12.8], [13.6868, 12.8]], "area_sqm": 12.07}, {"id": "F0_R8", "type": "laundry", "raw_type": "Space Utility Laundry", "polygon": [[13.6868, 12.9524], [9.9247, 12.9524], [9.9247, 15.1037], [13.6868, 15.1037]], "area_sqm": 8.09}, {"id": "F0_R9", "type": "bedroom", "raw_type": "Space Bedroom", "polygon": [[13.6868, 4.3067], [11.3607, 4.3067], [11.3607, 7.0877], [13.6868, 7.0877]], "area_sqm": 6.47}, {"id": "F0_R10", "type": "other", "raw_type": "Space Undefined", "polygon": [[13.6868, 7.2401], [11.3607, 7.2401], [11.3607, 9.4405], [13.6868, 9.4405]], "area_sqm": 5.12}, {"id": "F0_R11", "type": "storage", "raw_type": "Space Storage", "polygon": [[13.6868, 0.457], [11.6654, 0.457], [11.6654, 2.6234], [13.6868, 2.6234]], "area_sqm": 4.38}, {"id": "F0_R12", "type": "bathroom", "raw_type": "Space Bath", "polygon": [[11.2083, 7.2401], [10.7154, 7.2401], [9.9247, 8.083], [9.9247, 9.4405], [11.2083, 9.4405]], "area_sqm": 2.49}, {"id": "F0_R13", "type": "other", "raw_type": "Space Undefined", "polygon": [[13.6868, 3.0804], [11.4178, 3.0804], [11.4178, 4.1543], [13.6868, 4.1543]], "area_sqm": 2.44}], "walls": [{"id": "F0_W0", "polygon": [[0.0, 16.703], [10.2294, 16.703], [9.7724, 16.246], [0.457, 16.246]], "thickness_m": 0.437, "exterior": true, "height_m": 2.7}, {"id": "F0_W1", "polygon": [[9.7724, 16.246], [9.7724, 15.1037], [10.2294, 15.5607], [10.2294, 16.703]], "thickness_m": 0.457, "exterior": true, "height_m": 2.7}, {"id": "F0_W2", "polygon": [[9.7724, 15.1037], [13.6868, 15.1037], [14.1438, 15.5607], [10.2294, 15.5607]], "thickness_m": 0.457, "exterior": true, "height_m": 2.7}, {"id": "F0_W3", "polygon": [[13.6868, 15.1037], [13.6868, 0.457], [14.1438, 0.0], [14.1438, 15.5607]], "thickness_m": 0.444, "exterior": true, "height_m": 2.7}, {"id": "F0_W4", "polygon": [[13.6868, 0.457], [11.6654, 0.457], [11.2083, 0.0], [14.1438, 0.0]], "thickness_m": 0.386, "exterior": true, "height_m": 2.7}, {"id": "F0_W5", "polygon": [[11.6654, 0.457], [11.6654, 3.0804], [11.2083, 2.6234], [11.2083, 0.0]], "thickness_m": 0.457, "exterior": true, "height_m": 2.7}, {"id": "F0_W6", "polygon": [[11.6654, 3.0804], [0.457, 3.0804], [0.0, 2.6234], [11.2083, 2.6234]], "thickness_m": 0.457, "exterior": true, "height_m": 2.7}, {"id": "F0_W7", "polygon": [[0.0, 2.6234], [0.0, 16.703], [0.457, 16.246], [0.457, 3.0804]], "thickness_m": 0.442, "exterior": true, "height_m": 2.7}, {"id": "F0_W8", "polygon": [[11.2083, 3.0804], [14.1438, 3.0804], [14.1438, 2.6234], [11.2083, 2.6234]], "thickness_m": 0.457, "exterior": false, "height_m": 2.7}, {"id": "F0_W9", "polygon": [[9.4116, 2.6234], [9.4116, 6.68], [9.2783, 6.6233], [9.2783, 2.6234]], "thickness_m": 0.132, "exterior": false, "height_m": 2.7}, {"id": "F0_W10", "polygon": [[9.4116, 6.68], [8.0217, 8.0229], [8.0072, 7.8515], [9.2783, 6.6233]], "thickness_m": 0.128, "exterior": false, "height_m": 2.7}, {"id": "F0_W11", "polygon": [[8.0217, 8.0229], [0.0, 8.0229], [0.0, 7.8515], [8.0072, 7.8515]], "thickness_m": 0.171, "exterior": false, "height_m": 2.7}, {"id": "F0_W12", "polygon": [[11.2083, 2.6234], [11.2083, 4.3067], [11.4178, 4.1543], [11.4178, 2.6234]], "thickness_m": 0.2, "exterior": false, "height_m": 2.7}, {"id": "F0_W13", "polygon": [[11.2083, 4.3067], [14.1438, 4.3067], [14.1438, 4.1543], [11.4178, 4.1543]], "thickness_m": 0.147, "exterior": false, "height_m": 2.7}, {"id": "F0_W14", "polygon": [[9.7724, 15.5607], [9.7724, 8.0229], [9.9247, 8.083], [9.9247, 15.5607]], "thickness_m": 0.152, "exterior": false, "height_m": 2.7}, {"id": "F0_W15", "polygon": [[9.7724, 8.0229], [10.6495, 7.0877], [10.7154, 7.2401], [9.9247, 8.083]], "thickness_m": 0.145, "exterior": false, "height_m": 2.7}, {"id": "F0_W16", "polygon": [[10.6495, 7.0877], [14.1438, 7.0877], [14.1438, 7.2401], [10.7154, 7.2401]], "thickness_m": 0.151, "exterior": false, "height_m": 2.7}, {"id": "F0_W17", "polygon": [[9.7724, 12.8], [14.1438, 12.8], [14.1438, 12.9524], [9.7724, 12.9524]], "thickness_m": 0.152, "exterior": false, "height_m": 2.7}, {"id": "F0_W18", "polygon": [[9.7724, 9.5928], [14.1438, 9.5928], [14.1438, 9.4405], [9.7724, 9.4405]], "thickness_m": 0.152, "exterior": false, "height_m": 2.7}, {"id": "F0_W19", "polygon": [[11.2083, 4.1543], [11.2083, 9.5928], [11.3607, 9.5928], [11.3607, 4.1543]], "thickness_m": 0.152, "exterior": false, "height_m": 2.7}, {"id": "F0_W20", "polygon": [[14.7471, 9.5312], [14.7471, 13.9149], [15.166, 13.496], [15.166, 9.9501]], "thickness_m": 0.379, "exterior": false, "height_m": 2.7}, {"id": "F0_W21", "polygon": [[15.166, 13.496], [18.8125, 13.496], [19.2314, 13.9149], [14.7471, 13.9149]], "thickness_m": 0.38, "exterior": false, "height_m": 2.7}, {"id": "F0_W22", "polygon": [[18.8125, 13.496], [18.8125, 9.9501], [19.2314, 9.5312], [19.2314, 13.9149]], "thickness_m": 0.379, "exterior": false, "height_m": 2.7}, {"id": "F0_W23", "polygon": [[19.2314, 9.5312], [14.7471, 9.5312], [15.166, 9.9501], [18.8125, 9.9501]], "thickness_m": 0.38, "exterior": false, "height_m": 2.7}, {"id": "F0_W24", "polygon": [[9.2783, 4.5144], [9.9122, 4.5144], [9.9122, 4.4192], [9.2783, 4.4192]], "thickness_m": 0.095, "exterior": false, "height_m": 2.7}, {"id": "F0_W25", "polygon": [[5.349, 8.0229], [5.349, 2.6234], [5.1967, 2.6234], [5.1967, 8.0229]], "thickness_m": 0.152, "exterior": false, "height_m": 2.7}], "doors": [{"id": "F0_W2_D0", "wall_id": "F0_W2", "polygon": [[10.3193, 15.1037], [11.2822, 15.1037], [11.2822, 15.5607], [10.3193, 15.5607]], "width_m": 0.963, "kind": "swing", "height_m": 2.1}, {"id": "F0_W5_D0", "wall_id": "F0_W5", "polygon": [[11.6654, 1.1636], [11.6654, 2.0569], [11.2083, 2.0569], [11.2083, 1.1636]], "width_m": 0.893, "kind": "swing", "height_m": 2.1}, {"id": "F0_W6_D0", "wall_id": "F0_W6", "polygon": [[10.9995, 3.0804], [10.1588, 3.0804], [10.1588, 2.6234], [10.9995, 2.6234]], "width_m": 0.841, "kind": "swing", "height_m": 2.1}, {"id": "F0_W10_D0", "wall_id": "F0_W10", "polygon": [[9.1113, 6.97], [8.4031, 7.6544], [8.3104, 7.5584], [9.0187, 6.8741]], "width_m": 0.985, "kind": "swing", "height_m": 2.1}, {"id": "F0_W11_D0", "wall_id": "F0_W11", "polygon": [[4.8831, 8.0229], [3.9074, 8.0229], [3.9074, 7.8515], [4.8831, 7.8515]], "width_m": 0.976, "kind": "swing", "height_m": 2.1}, {"id": "F0_W13_D0", "wall_id": "F0_W13", "polygon": [[12.1972, 4.3067], [13.6689, 4.3067], [13.6689, 4.1543], [12.1972, 4.1543]], "width_m": 1.472, "kind": "none", "height_m": 2.1}, {"id": "F0_W14_D0", "wall_id": "F0_W14", "polygon": [[9.7724, 14.4626], [9.7724, 13.6352], [9.9247, 13.6352], [9.9247, 14.4626]], "width_m": 0.827, "kind": "swing", "height_m": 2.1}, {"id": "F0_W15_D0", "wall_id": "F0_W15", "polygon": [[9.8731, 7.9153], [10.5354, 7.2092], [10.6466, 7.3134], [9.9843, 8.0194]], "width_m": 0.968, "kind": "swing", "height_m": 2.1}, {"id": "F0_W17_D0", "wall_id": "F0_W17", "polygon": [[10.8595, 12.8], [11.7076, 12.8], [11.7076, 12.9524], [10.8595, 12.9524]], "width_m": 0.848, "kind": "swing", "height_m": 2.1}, {"id": "F0_W18_D0", "wall_id": "F0_W18", "polygon": [[11.8643, 9.5928], [12.6768, 9.5928], [12.6768, 9.4405], [11.8643, 9.4405]], "width_m": 0.812, "kind": "swing", "height_m": 2.1}, {"id": "F0_W19_D0", "wall_id": "F0_W19", "polygon": [[11.2083, 4.4032], [11.2083, 5.5048], [11.3607, 5.5048], [11.3607, 4.4032]], "width_m": 1.102, "kind": "swing", "height_m": 2.1}], "windows": [{"id": "F0_W0_O0", "wall_id": "F0_W0", "polygon": [[0.977, 16.703], [2.7567, 16.703], [2.7567, 16.246], [0.977, 16.246]], "width_m": 1.78, "sill_height_m": 0.9, "height_m": 1.2}, {"id": "F0_W0_O1", "wall_id": "F0_W0", "polygon": [[4.4445, 16.703], [5.759, 16.703], [5.759, 16.246], [4.4445, 16.246]], "width_m": 1.315, "sill_height_m": 0.9, "height_m": 1.2}, {"id": "F0_W0_O2", "wall_id": "F0_W0", "polygon": [[6.3053, 16.703], [7.6523, 16.703], [7.6523, 16.246], [6.3053, 16.246]], "width_m": 1.347, "sill_height_m": 0.9, "height_m": 1.2}, {"id": "F0_W0_O3", "wall_id": "F0_W0", "polygon": [[8.096, 16.703], [9.4321, 16.703], [9.4321, 16.246], [8.096, 16.246]], "width_m": 1.336, "sill_height_m": 0.9, "height_m": 1.2}, {"id": "F0_W2_O0", "wall_id": "F0_W2", "polygon": [[11.9637, 15.1037], [13.2892, 15.1037], [13.2892, 15.5607], [11.9637, 15.5607]], "width_m": 1.325, "sill_height_m": 0.9, "height_m": 1.2}, {"id": "F0_W6_O0", "wall_id": "F0_W6", "polygon": [[3.6261, 3.0804], [1.752, 3.0804], [1.752, 2.6234], [3.6261, 2.6234]], "width_m": 1.874, "sill_height_m": 0.9, "height_m": 1.2}, {"id": "F0_W6_O1", "wall_id": "F0_W6", "polygon": [[8.3431, 3.0804], [6.4517, 3.0804], [6.4517, 2.6234], [8.3431, 2.6234]], "width_m": 1.891, "sill_height_m": 0.9, "height_m": 1.2}], "fixtures": [{"id": "F0_X0", "type": "base_cabinet", "raw_type": "FixedFurniture BaseCabinet", "room_id": "F0_R3", "polygon": [[3.2923, 13.234], [3.2923, 11.7556], [2.6923, 11.7556], [2.6923, 13.234]], "height_m": 0.9, "elevation_m": 0.0}, {"id": "F0_X1", "type": "other", "raw_type": "FixedFurniture Housing", "room_id": "F0_R4", "polygon": [[2.0978, 7.8515], [2.0978, 7.5566], [0.457, 7.5566], [0.457, 7.8515]], "height_m": 1.0, "elevation_m": 0.0}, {"id": "F0_X2", "type": "other", "raw_type": "FixedFurniture Housing", "room_id": "F0_R0", "polygon": [[9.4115, 3.7823], [9.6644, 3.7823], [9.6644, 3.0804], [9.4115, 3.0804]], "height_m": 1.0, "elevation_m": 0.0}, {"id": "F0_X3", "type": "sauna_bench", "raw_type": "FixedFurniture SaunaBench", "room_id": "F0_R10", "polygon": [[12.5758, 7.24], [11.3607, 7.24], [11.3607, 7.6781], [12.5758, 7.6781]], "height_m": 0.5, "elevation_m": 0.0}, {"id": "F0_X4", "type": "stairs", "raw_type": "Flight", "room_id": "F0_R2", "polygon": [[9.1393, 10.6312], [9.1393, 12.1248], [9.7724, 12.1248], [9.7724, 10.6312]], "height_m": 2.7, "elevation_m": 0.0}]}], "total_area_sqm": 180.01}</script>
+<script type="application/json" id="viewer-data">{"storey_height_m": 2.75, "wall_height_m": 2.7, "start_level": 0, "source_warning": "Representative layout: same rooms and size as this listing, not its actual floor plan.", "listing": {"property_id": "PROP_1078", "title": "Furnished apartment for rent in Abu El Feda Compou", "location": "Al Feda Gardens, The 5th Settlement, New Cairo City, Cairo", "area_sqm": 180.0, "bedrooms": 3, "bathrooms": 2}, "floors": [{"level": 0, "spawn": [10.31, 5.597], "spawn_yaw": 0.644, "center": [9.635, 8.351], "extent": 18.355, "rooms": [{"id": "F0_R0", "type": "entry", "area_sqm": 2.53, "label": [10.31, 3.75]}, {"id": "F0_R1", "type": "entry", "area_sqm": 6.3, "label": [10.31, 5.597]}, {"id": "F0_R2", "type": "living", "area_sqm": 61.83, "label": [6.532, 10.628]}, {"id": "F0_R3", "type": "kitchen", "area_sqm": 14.78, "label": [1.875, 10.628]}, {"id": "F0_R4", "type": "bedroom", "area_sqm": 22.61, "label": [2.827, 5.466]}, {"id": "F0_R5", "type": "bedroom", "area_sqm": 17.97, "label": [7.314, 4.852]}, {"id": "F0_R6", "type": "other", "area_sqm": 12.93, "label": [16.989, 11.723]}, {"id": "F0_R7", "type": "bathroom", "area_sqm": 12.07, "label": [11.806, 11.196]}, {"id": "F0_R8", "type": "laundry", "area_sqm": 8.09, "label": [11.806, 14.028]}, {"id": "F0_R9", "type": "bedroom", "area_sqm": 6.47, "label": [12.524, 5.697]}, {"id": "F0_R10", "type": "other", "area_sqm": 5.12, "label": [12.524, 8.34]}, {"id": "F0_R11", "type": "storage", "area_sqm": 4.38, "label": [12.676, 1.54]}, {"id": "F0_R12", "type": "bathroom", "area_sqm": 2.49, "label": [10.566, 8.762]}, {"id": "F0_R13", "type": "other", "area_sqm": 2.44, "label": [12.552, 3.617]}]}]}</script>
+<script type="application/json" id="staging-data">null</script>
+<script type="text/plain" id="glb-data">Z2xURgIAAAAcuQAAoHEAAEpTT057InNjZW5lIjowLCJzY2VuZXMiOlt7Im5vZGVzIjpbMCwxLDIsMyw0LDUsNiw3LDgsOSwxMCwxMSwxMiwxMywxNCwxNSwxNiwxNywxOCwxOSwyMCwyMSwyMiwyMywyNCwyNSwyNiwyNywyOCwyOSwzMCwzMSwzMiwzMywzNCwzNSwzNiwzNywzOCwzOSw0MCw0MSw0Miw0Myw0NF19XSwiYXNzZXQiOnsidmVyc2lvbiI6IjIuMCIsImdlbmVyYXRvciI6Imh0dHBzOi8vZ2l0aHViLmNvbS9taWtlZGgvdHJpbWVzaCJ9LCJhY2Nlc3NvcnMiOlt7ImNvbXBvbmVudFR5cGUiOjUxMjUsInR5cGUiOiJTQ0FMQVIiLCJidWZmZXJWaWV3IjowLCJjb3VudCI6NjAsIm1heCI6WzExXSwibWluIjpbMF19LHsiY29tcG9uZW50VHlwZSI6NTEyNiwidHlwZSI6IlZFQzMiLCJieXRlT2Zmc2V0IjowLCJidWZmZXJWaWV3IjoxLCJjb3VudCI6MTIsIm1heCI6WzExLjIwODI5OTYzNjg0MDgyLDQuNTE0NDAwMDA1MzQwNTc2LDAuMF0sIm1pbiI6WzkuNDExNjAwMTEyOTE1MDM5LDMuMDgwMzk5OTkwMDgxNzg3LC0wLjA1MDAwMDAwMDc0NTA1ODA2XX0seyJjb21wb25lbnRUeXBlIjo1MTIxLCJub3JtYWxpemVkIjp0cnVlLCJ0eXBlIjoiVkVDNCIsImJ5dGVPZmZzZXQiOjAsImJ1ZmZlclZpZXciOjIsImNvdW50IjoxMiwibWF4IjpbMjEwLDIxMCwyMTAsMjU1XSwibWluIjpbMjEwLDIxMCwyMTAsMjU1XX0seyJjb21wb25lbnRUeXBlIjo1MTI1LCJ0eXBlIjoiU0NBTEFSIiwiYnVmZmVyVmlldyI6MywiY291bnQiOjcyLCJtYXgiOlsxM10sIm1pbiI6WzBdfSx7ImNvbXBvbmVudFR5cGUiOjUxMjYsInR5cGUiOiJWRUMzIiwiYnl0ZU9mZnNldCI6MCwiYnVmZmVyVmlldyI6NCwiY291bnQiOjE0LCJtYXgiOlsxMS4yMDgyOTk2MzY4NDA4Miw4LjAyMjg5OTYyNzY4NTU0NywwLjBdLCJtaW4iOls4LjAyMTY5OTkwNTM5NTUwOCw0LjUxNDQwMDAwNTM0MDU3NiwtMC4wNTAwMDAwMDA3NDUwNTgwNl19LHsiY29tcG9uZW50VHlwZSI6NTEyMSwibm9ybWFsaXplZCI6dHJ1ZSwidHlwZSI6IlZFQzQiLCJieXRlT2Zmc2V0IjowLCJidWZmZXJWaWV3Ijo1LCJjb3VudCI6MTQsIm1heCI6WzIxMCwyMTAsMjEwLDI1NV0sIm1pbiI6WzIxMCwyMTAsMjEwLDI1NV19LHsiY29tcG9uZW50VHlwZSI6NTEyNSwidHlwZSI6IlNDQUxBUiIsImJ1ZmZlclZpZXciOjYsImNvdW50Ijo2MCwibWF4IjpbMTFdLCJtaW4iOlswXX0seyJjb21wb25lbnRUeXBlIjo1MTI2LCJ0eXBlIjoiVkVDMyIsImJ5dGVPZmZzZXQiOjAsImJ1ZmZlclZpZXciOjcsImNvdW50IjoxMiwibWF4IjpbOS43NzIzOTk5MDIzNDM3NSwxNi4yNDYwMDAyODk5MTY5OTIsMC4wXSwibWluIjpbMC40NTY5OTk5ODczNjM4MTUzLDguMDIyODk5NjI3Njg1NTQ3LC0wLjA1MDAwMDAwMDc0NTA1ODA2XX0seyJjb21wb25lbnRUeXBlIjo1MTIxLCJub3JtYWxpemVkIjp0cnVlLCJ0eXBlIjoiVkVDNCIsImJ5dGVPZmZzZXQiOjAsImJ1ZmZlclZpZXciOjgsImNvdW50IjoxMiwibWF4IjpbMjQwLDIxNCwxNjAsMjU1XSwibWluIjpbMjQwLDIxNCwxNjAsMjU1XX0seyJjb21wb25lbnRUeXBlIjo1MTI1LCJ0eXBlIjoiU0NBTEFSIiwiYnVmZmVyVmlldyI6OSwiY291bnQiOjM2LCJtYXgiOls3XSwibWluIjpbMF19LHsiY29tcG9uZW50VHlwZSI6NTEyNiwidHlwZSI6IlZFQzMiLCJieXRlT2Zmc2V0IjowLCJidWZmZXJWaWV3IjoxMCwiY291bnQiOjgsIm1heCI6WzMuMjkyMjk5OTg1ODg1NjIsMTMuMjM0MDAwMjA1OTkzNjUyLDAuMF0sIm1pbiI6WzAuNDU2OTk5OTg3MzYzODE1Myw4LjAyMjg5OTYyNzY4NTU0NywtMC4wNTAwMDAwMDA3NDUwNTgwNl19LHsiY29tcG9uZW50VHlwZSI6NTEyMSwibm9ybWFsaXplZCI6dHJ1ZSwidHlwZSI6IlZFQzQiLCJieXRlT2Zmc2V0IjowLCJidWZmZXJWaWV3IjoxMSwiY291bnQiOjgsIm1heCI6WzI0MCwxODAsMTUwLDI1NV0sIm1pbiI6WzI0MCwxODAsMTUwLDI1NV19LHsiY29tcG9uZW50VHlwZSI6NTEyNiwidHlwZSI6IlZFQzMiLCJieXRlT2Zmc2V0IjowLCJidWZmZXJWaWV3IjoxMiwiY291bnQiOjgsIm1heCI6WzUuMTk2NzAwMDk2MTMwMzcxLDcuODUxNTAwMDM0MzMyMjc1LDAuMF0sIm1pbiI6WzAuNDU2OTk5OTg3MzYzODE1MywzLjA4MDM5OTk5MDA4MTc4NywtMC4wNTAwMDAwMDA3NDUwNTgwNl19LHsiY29tcG9uZW50VHlwZSI6NTEyMSwibm9ybWFsaXplZCI6dHJ1ZSwidHlwZSI6IlZFQzQiLCJieXRlT2Zmc2V0IjowLCJidWZmZXJWaWV3IjoxMywiY291bnQiOjgsIm1heCI6WzE2OCwxOTgsMjMwLDI1NV0sIm1pbiI6WzE2OCwxOTgsMjMwLDI1NV19LHsiY29tcG9uZW50VHlwZSI6NTEyNSwidHlwZSI6IlNDQUxBUiIsImJ1ZmZlclZpZXciOjE0LCJjb3VudCI6NDgsIm1heCI6WzldLCJtaW4iOlswXX0seyJjb21wb25lbnRUeXBlIjo1MTI2LCJ0eXBlIjoiVkVDMyIsImJ5dGVPZmZzZXQiOjAsImJ1ZmZlclZpZXciOjE1LCJjb3VudCI6MTAsIm1heCI6WzkuMjc4MzAwMjg1MzM5MzU1LDcuODUxNTAwMDM0MzMyMjc1LDAuMF0sIm1pbiI6WzUuMzQ4OTk5OTc3MTExODE2LDMuMDgwMzk5OTkwMDgxNzg3LC0wLjA1MDAwMDAwMDc0NTA1ODA2XX0seyJjb21wb25lbnRUeXBlIjo1MTIxLCJub3JtYWxpemVkIjp0cnVlLCJ0eXBlIjoiVkVDNCIsImJ5dGVPZmZzZXQiOjAsImJ1ZmZlclZpZXciOjE2LCJjb3VudCI6MTAsIm1heCI6WzE2OCwxOTgsMjMwLDI1NV0sIm1pbiI6WzE2OCwxOTgsMjMwLDI1NV19LHsiY29tcG9uZW50VHlwZSI6NTEyNiwidHlwZSI6IlZFQzMiLCJieXRlT2Zmc2V0IjowLCJidWZmZXJWaWV3IjoxNywiY291bnQiOjgsIm1heCI6WzE4LjgxMjUsMTMuNDk2MDAwMjg5OTE2OTkyLDAuMF0sIm1pbiI6WzE1LjE2NjAwMDM2NjIxMDkzOCw5Ljk1MDA5OTk0NTA2ODM2LC0wLjA1MDAwMDAwMDc0NTA1ODA2XX0seyJjb21wb25lbnRUeXBlIjo1MTIxLCJub3JtYWxpemVkIjp0cnVlLCJ0eXBlIjoiVkVDNCIsImJ5dGVPZmZzZXQiOjAsImJ1ZmZlclZpZXciOjE4LCJjb3VudCI6OCwibWF4IjpbMjI1LDIyMCwyMTAsMjU1XSwibWluIjpbMjI1LDIyMCwyMTAsMjU1XX0seyJjb21wb25lbnRUeXBlIjo1MTI2LCJ0eXBlIjoiVkVDMyIsImJ5dGVPZmZzZXQiOjAsImJ1ZmZlclZpZXciOjE5LCJjb3VudCI6OCwibWF4IjpbMTMuNjg2ODAwMDAzMDUxNzU4LDEyLjgwMDAwMDE5MDczNDg2MywwLjBdLCJtaW4iOls5LjkyNDY5OTc4MzMyNTE5NSw5LjU5MjgwMDE0MDM4MDg2LC0wLjA1MDAwMDAwMDc0NTA1ODA2XX0seyJjb21wb25lbnRUeXBlIjo1MTIxLCJub3JtYWxpemVkIjp0cnVlLCJ0eXBlIjoiVkVDNCIsImJ5dGVPZmZzZXQiOjAsImJ1ZmZlclZpZXciOjIwLCJjb3VudCI6OCwibWF4IjpbMTUwLDIxNSwyMTAsMjU1XSwibWluIjpbMTUwLDIxNSwyMTAsMjU1XX0seyJjb21wb25lbnRUeXBlIjo1MTI2LCJ0eXBlIjoiVkVDMyIsImJ5dGVPZmZzZXQiOjAsImJ1ZmZlclZpZXciOjIxLCJjb3VudCI6OCwibWF4IjpbMTMuNjg2ODAwMDAzMDUxNzU4LDE1LjEwMzY5OTY4NDE0MzA2NiwwLjBdLCJtaW4iOls5LjkyNDY5OTc4MzMyNTE5NSwxMi45NTI0MDAyMDc1MTk1MzEsLTAuMDUwMDAwMDAwNzQ1MDU4MDZdfSx7ImNvbXBvbmVudFR5cGUiOjUxMjYsInR5cGUiOiJWRUMzIiwiYnl0ZU9mZnNldCI6MCwiYnVmZmVyVmlldyI6MjIsImNvdW50Ijo4LCJtYXgiOlsxMy42ODY4MDAwMDMwNTE3NTgsNy4wODc2OTk4OTAxMzY3MTksMC4wXSwibWluIjpbMTEuMzYwNjk5NjUzNjI1NDg4LDQuMzA2NzAwMjI5NjQ0Nzc1LC0wLjA1MDAwMDAwMDc0NTA1ODA2XX0seyJjb21wb25lbnRUeXBlIjo1MTI2LCJ0eXBlIjoiVkVDMyIsImJ5dGVPZmZzZXQiOjAsImJ1ZmZlclZpZXciOjIzLCJjb3VudCI6OCwibWF4IjpbMTMuNjg2ODAwMDAzMDUxNzU4LDkuNDQwNTAwMjU5Mzk5NDE0LDAuMF0sIm1pbiI6WzExLjM2MDY5OTY1MzYyNTQ4OCw3LjI0MDA5OTkwNjkyMTM4NywtMC4wNTAwMDAwMDA3NDUwNTgwNl19LHsiY29tcG9uZW50VHlwZSI6NTEyNiwidHlwZSI6IlZFQzMiLCJieXRlT2Zmc2V0IjowLCJidWZmZXJWaWV3IjoyNCwiY291bnQiOjgsIm1heCI6WzEzLjY4NjgwMDAwMzA1MTc1OCwyLjYyMzM5OTk3MjkxNTY0OTQsMC4wXSwibWluIjpbMTEuNjY1Mzk5NTUxMzkxNjAyLDAuNDU2OTk5OTg3MzYzODE1MywtMC4wNTAwMDAwMDA3NDUwNTgwNl19LHsiY29tcG9uZW50VHlwZSI6NTEyNiwidHlwZSI6IlZFQzMiLCJieXRlT2Zmc2V0IjowLCJidWZmZXJWaWV3IjoyNSwiY291bnQiOjEwLCJtYXgiOlsxMS4yMDgyOTk2MzY4NDA4Miw5LjQ0MDUwMDI1OTM5OTQxNCwwLjBdLCJtaW4iOls5LjkyNDY5OTc4MzMyNTE5NSw3LjI0MDA5OTkwNjkyMTM4NywtMC4wNTAwMDAwMDA3NDUwNTgwNl19LHsiY29tcG9uZW50VHlwZSI6NTEyMSwibm9ybWFsaXplZCI6dHJ1ZSwidHlwZSI6IlZFQzQiLCJieXRlT2Zmc2V0IjowLCJidWZmZXJWaWV3IjoyNiwiY291bnQiOjEwLCJtYXgiOlsxNTAsMjE1LDIxMCwyNTVdLCJtaW4iOlsxNTAsMjE1LDIxMCwyNTVdfSx7ImNvbXBvbmVudFR5cGUiOjUxMjYsInR5cGUiOiJWRUMzIiwiYnl0ZU9mZnNldCI6MCwiYnVmZmVyVmlldyI6MjcsImNvdW50Ijo4LCJtYXgiOlsxMy42ODY4MDAwMDMwNTE3NTgsNC4xNTQzMDAyMTI4NjAxMDcsMC4wXSwibWluIjpbMTEuNDE3Nzk5OTQ5NjQ1OTk2LDMuMDgwMzk5OTkwMDgxNzg3LC0wLjA1MDAwMDAwMDc0NTA1ODA2XX0seyJjb21wb25lbnRUeXBlIjo1MTI1LCJ0eXBlIjoiU0NBTEFSIiwiYnVmZmVyVmlldyI6MjgsImNvdW50Ijo0NjgsIm1heCI6WzEwM10sIm1pbiI6WzBdfSx7ImNvbXBvbmVudFR5cGUiOjUxMjYsInR5cGUiOiJWRUMzIiwiYnl0ZU9mZnNldCI6MCwiYnVmZmVyVmlldyI6MjksImNvdW50IjoxMDQsIm1heCI6WzEwLjIyOTM5OTY4MTA5MTMwOSwxNi43MDI5OTkxMTQ5OTAyMzQsMi43MDAwMDAwNDc2ODM3MTZdLCJtaW4iOlswLjAsMTYuMjQ2MDAwMjg5OTE2OTkyLDAuMF19LHsiY29tcG9uZW50VHlwZSI6NTEyMSwibm9ybWFsaXplZCI6dHJ1ZSwidHlwZSI6IlZFQzQiLCJieXRlT2Zmc2V0IjowLCJidWZmZXJWaWV3IjozMCwiY291bnQiOjEwNCwibWF4IjpbMjAwLDE5NiwxODgsMjU1XSwibWluIjpbMjAwLDE5NiwxODgsMjU1XX0seyJjb21wb25lbnRUeXBlIjo1MTI2LCJ0eXBlIjoiVkVDMyIsImJ5dGVPZmZzZXQiOjAsImJ1ZmZlclZpZXciOjMxLCJjb3VudCI6OCwibWF4IjpbMTAuMjI5Mzk5NjgxMDkxMzA5LDE2LjcwMjk5OTExNDk5MDIzNCwyLjcwMDAwMDA0NzY4MzcxNl0sIm1pbiI6WzkuNzcyMzk5OTAyMzQzNzUsMTUuMTAzNjk5Njg0MTQzMDY2LDAuMF19LHsiY29tcG9uZW50VHlwZSI6NTEyMSwibm9ybWFsaXplZCI6dHJ1ZSwidHlwZSI6IlZFQzQiLCJieXRlT2Zmc2V0IjowLCJidWZmZXJWaWV3IjozMiwiY291bnQiOjgsIm1heCI6WzIwMCwxOTYsMTg4LDI1NV0sIm1pbiI6WzIwMCwxOTYsMTg4LDI1NV19LHsiY29tcG9uZW50VHlwZSI6NTEyNSwidHlwZSI6IlNDQUxBUiIsImJ1ZmZlclZpZXciOjMzLCJjb3VudCI6MjE2LCJtYXgiOls0N10sIm1pbiI6WzBdfSx7ImNvbXBvbmVudFR5cGUiOjUxMjYsInR5cGUiOiJWRUMzIiwiYnl0ZU9mZnNldCI6MCwiYnVmZmVyVmlldyI6MzQsImNvdW50Ijo0OCwibWF4IjpbMTQuMTQzNzk5NzgxNzk5MzE2LDE1LjU2MDcwMDQxNjU2NDk0MSwyLjcwMDAwMDA0NzY4MzcxNl0sIm1pbiI6WzkuNzcyMzk5OTAyMzQzNzUsMTUuMTAzNjk5Njg0MTQzMDY2LDAuMF19LHsiY29tcG9uZW50VHlwZSI6NTEyMSwibm9ybWFsaXplZCI6dHJ1ZSwidHlwZSI6IlZFQzQiLCJieXRlT2Zmc2V0IjowLCJidWZmZXJWaWV3IjozNSwiY291bnQiOjQ4LCJtYXgiOlsyMDAsMTk2LDE4OCwyNTVdLCJtaW4iOlsyMDAsMTk2LDE4OCwyNTVdfSx7ImNvbXBvbmVudFR5cGUiOjUxMjYsInR5cGUiOiJWRUMzIiwiYnl0ZU9mZnNldCI6MCwiYnVmZmVyVmlldyI6MzYsImNvdW50Ijo4LCJtYXgiOlsxNC4xNDM3OTk3ODE3OTkzMTYsMTUuNTYwNzAwNDE2NTY0OTQxLDIuNzAwMDAwMDQ3NjgzNzE2XSwibWluIjpbMTMuNjg2ODAwMDAzMDUxNzU4LDAuMCwwLjBdfSx7ImNvbXBvbmVudFR5cGUiOjUxMjYsInR5cGUiOiJWRUMzIiwiYnl0ZU9mZnNldCI6MCwiYnVmZmVyVmlldyI6MzcsImNvdW50Ijo4LCJtYXgiOlsxNC4xNDM3OTk3ODE3OTkzMTYsMC40NTY5OTk5ODczNjM4MTUzLDIuNzAwMDAwMDQ3NjgzNzE2XSwibWluIjpbMTEuMjA4Mjk5NjM2ODQwODIsMC4wLDAuMF19LHsiY29tcG9uZW50VHlwZSI6NTEyNSwidHlwZSI6IlNDQUxBUiIsImJ1ZmZlclZpZXciOjM4LCJjb3VudCI6MTA4LCJtYXgiOlsyM10sIm1pbiI6WzBdfSx7ImNvbXBvbmVudFR5cGUiOjUxMjYsInR5cGUiOiJWRUMzIiwiYnl0ZU9mZnNldCI6MCwiYnVmZmVyVmlldyI6MzksImNvdW50IjoyNCwibWF4IjpbMTEuNjY1Mzk5NTUxMzkxNjAyLDMuMDgwMzk5OTkwMDgxNzg3LDIuNzAwMDAwMDQ3NjgzNzE2XSwibWluIjpbMTEuMjA4Mjk5NjM2ODQwODIsMC4wLDAuMF19LHsiY29tcG9uZW50VHlwZSI6NTEyMSwibm9ybWFsaXplZCI6dHJ1ZSwidHlwZSI6IlZFQzQiLCJieXRlT2Zmc2V0IjowLCJidWZmZXJWaWV3Ijo0MCwiY291bnQiOjI0LCJtYXgiOlsyMDAsMTk2LDE4OCwyNTVdLCJtaW4iOlsyMDAsMTk2LDE4OCwyNTVdfSx7ImNvbXBvbmVudFR5cGUiOjUxMjUsInR5cGUiOiJTQ0FMQVIiLCJidWZmZXJWaWV3Ijo0MSwiY291bnQiOjMyNCwibWF4IjpbNzFdLCJtaW4iOlswXX0seyJjb21wb25lbnRUeXBlIjo1MTI2LCJ0eXBlIjoiVkVDMyIsImJ5dGVPZmZzZXQiOjAsImJ1ZmZlclZpZXciOjQyLCJjb3VudCI6NzIsIm1heCI6WzExLjY2NTM5OTU1MTM5MTYwMiwzLjA4MDM5OTk5MDA4MTc4NywyLjcwMDAwMDA0NzY4MzcxNl0sIm1pbiI6WzAuMCwyLjYyMzM5OTk3MjkxNTY0OTQsMC4wXX0seyJjb21wb25lbnRUeXBlIjo1MTIxLCJub3JtYWxpemVkIjp0cnVlLCJ0eXBlIjoiVkVDNCIsImJ5dGVPZmZzZXQiOjAsImJ1ZmZlclZpZXciOjQzLCJjb3VudCI6NzIsIm1heCI6WzIwMCwxOTYsMTg4LDI1NV0sIm1pbiI6WzIwMCwxOTYsMTg4LDI1NV19LHsiY29tcG9uZW50VHlwZSI6NTEyNiwidHlwZSI6IlZFQzMiLCJieXRlT2Zmc2V0IjowLCJidWZmZXJWaWV3Ijo0NCwiY291bnQiOjgsIm1heCI6WzAuNDU2OTk5OTg3MzYzODE1MywxNi43MDI5OTkxMTQ5OTAyMzQsMi43MDAwMDAwNDc2ODM3MTZdLCJtaW4iOlswLjAsMi42MjMzOTk5NzI5MTU2NDk0LDAuMF19LHsiY29tcG9uZW50VHlwZSI6NTEyNiwidHlwZSI6IlZFQzMiLCJieXRlT2Zmc2V0IjowLCJidWZmZXJWaWV3Ijo0NSwiY291bnQiOjgsIm1heCI6WzE0LjE0Mzc5OTc4MTc5OTMxNiwzLjA4MDM5OTk5MDA4MTc4NywyLjcwMDAwMDA0NzY4MzcxNl0sIm1pbiI6WzExLjIwODI5OTYzNjg0MDgyLDIuNjIzMzk5OTcyOTE1NjQ5NCwwLjBdfSx7ImNvbXBvbmVudFR5cGUiOjUxMjEsIm5vcm1hbGl6ZWQiOnRydWUsInR5cGUiOiJWRUM0IiwiYnl0ZU9mZnNldCI6MCwiYnVmZmVyVmlldyI6NDYsImNvdW50Ijo4LCJtYXgiOlsyNDUsMjQ1LDI0MCwyNTVdLCJtaW4iOlsyNDUsMjQ1LDI0MCwyNTVdfSx7ImNvbXBvbmVudFR5cGUiOjUxMjYsInR5cGUiOiJWRUMzIiwiYnl0ZU9mZnNldCI6MCwiYnVmZmVyVmlldyI6NDcsImNvdW50Ijo4LCJtYXgiOls5LjQxMTYwMDExMjkxNTAzOSw2LjY3OTk5OTgyODMzODYyMywyLjcwMDAwMDA0NzY4MzcxNl0sIm1pbiI6WzkuMjc4MzAwMjg1MzM5MzU1LDIuNjIzMzk5OTcyOTE1NjQ5NCwwLjBdfSx7ImNvbXBvbmVudFR5cGUiOjUxMjUsInR5cGUiOiJTQ0FMQVIiLCJidWZmZXJWaWV3Ijo0OCwiY291bnQiOjEzMiwibWF4IjpbMjddLCJtaW4iOlswXX0seyJjb21wb25lbnRUeXBlIjo1MTI2LCJ0eXBlIjoiVkVDMyIsImJ5dGVPZmZzZXQiOjAsImJ1ZmZlclZpZXciOjQ5LCJjb3VudCI6MjgsIm1heCI6WzkuNDExNjAwMTEyOTE1MDM5LDguMDIyODk5NjI3Njg1NTQ3LDIuNzAwMDAwMDQ3NjgzNzE2XSwibWluIjpbOC4wMDcyMDAyNDEwODg4NjcsNi42MjMzMDAwNzU1MzEwMDYsMC4wXX0seyJjb21wb25lbnRUeXBlIjo1MTIxLCJub3JtYWxpemVkIjp0cnVlLCJ0eXBlIjoiVkVDNCIsImJ5dGVPZmZzZXQiOjAsImJ1ZmZlclZpZXciOjUwLCJjb3VudCI6MjgsIm1heCI6WzI0NSwyNDUsMjQwLDI1NV0sIm1pbiI6WzI0NSwyNDUsMjQwLDI1NV19LHsiY29tcG9uZW50VHlwZSI6NTEyNiwidHlwZSI6IlZFQzMiLCJieXRlT2Zmc2V0IjowLCJidWZmZXJWaWV3Ijo1MSwiY291bnQiOjI0LCJtYXgiOls4LjAyMTY5OTkwNTM5NTUwOCw4LjAyMjg5OTYyNzY4NTU0NywyLjcwMDAwMDA0NzY4MzcxNl0sIm1pbiI6WzAuMCw3Ljg1MTUwMDAzNDMzMjI3NSwwLjBdfSx7ImNvbXBvbmVudFR5cGUiOjUxMjEsIm5vcm1hbGl6ZWQiOnRydWUsInR5cGUiOiJWRUM0IiwiYnl0ZU9mZnNldCI6MCwiYnVmZmVyVmlldyI6NTIsImNvdW50IjoyNCwibWF4IjpbMjQ1LDI0NSwyNDAsMjU1XSwibWluIjpbMjQ1LDI0NSwyNDAsMjU1XX0seyJjb21wb25lbnRUeXBlIjo1MTI2LCJ0eXBlIjoiVkVDMyIsImJ5dGVPZmZzZXQiOjAsImJ1ZmZlclZpZXciOjUzLCJjb3VudCI6OCwibWF4IjpbMTEuNDE3Nzk5OTQ5NjQ1OTk2LDQuMzA2NzAwMjI5NjQ0Nzc1LDIuNzAwMDAwMDQ3NjgzNzE2XSwibWluIjpbMTEuMjA4Mjk5NjM2ODQwODIsMi42MjMzOTk5NzI5MTU2NDk0LDAuMF19LHsiY29tcG9uZW50VHlwZSI6NTEyNiwidHlwZSI6IlZFQzMiLCJieXRlT2Zmc2V0IjowLCJidWZmZXJWaWV3Ijo1NCwiY291bnQiOjI0LCJtYXgiOlsxNC4xNDM3OTk3ODE3OTkzMTYsNC4zMDY3MDAyMjk2NDQ3NzUsMi43MDAwMDAwNDc2ODM3MTZdLCJtaW4iOlsxMS4yMDgyOTk2MzY4NDA4Miw0LjE1NDMwMDIxMjg2MDEwNywwLjBdfSx7ImNvbXBvbmVudFR5cGUiOjUxMjYsInR5cGUiOiJWRUMzIiwiYnl0ZU9mZnNldCI6MCwiYnVmZmVyVmlldyI6NTUsImNvdW50IjoyNCwibWF4IjpbOS45MjQ2OTk3ODMzMjUxOTUsMTUuNTYwNzAwNDE2NTY0OTQxLDIuNzAwMDAwMDQ3NjgzNzE2XSwibWluIjpbOS43NzIzOTk5MDIzNDM3NSw4LjAyMjg5OTYyNzY4NTU0NywwLjBdfSx7ImNvbXBvbmVudFR5cGUiOjUxMjUsInR5cGUiOiJTQ0FMQVIiLCJidWZmZXJWaWV3Ijo1NiwiY291bnQiOjEyMCwibWF4IjpbMjNdLCJtaW4iOlswXX0seyJjb21wb25lbnRUeXBlIjo1MTI2LCJ0eXBlIjoiVkVDMyIsImJ5dGVPZmZzZXQiOjAsImJ1ZmZlclZpZXciOjU3LCJjb3VudCI6MjQsIm1heCI6WzEwLjcxNTM5OTc0MjEyNjQ2NSw4LjA4MzAwMDE4MzEwNTQ2OSwyLjcwMDAwMDA0NzY4MzcxNl0sIm1pbiI6WzkuNzcyMzk5OTAyMzQzNzUsNy4wODc2OTk4OTAxMzY3MTksMC4wXX0seyJjb21wb25lbnRUeXBlIjo1MTI2LCJ0eXBlIjoiVkVDMyIsImJ5dGVPZmZzZXQiOjAsImJ1ZmZlclZpZXciOjU4LCJjb3VudCI6OCwibWF4IjpbMTQuMTQzNzk5NzgxNzk5MzE2LDcuMjQwMDk5OTA2OTIxMzg3LDIuNzAwMDAwMDQ3NjgzNzE2XSwibWluIjpbMTAuNjQ5NDk5ODkzMTg4NDc3LDcuMDg3Njk5ODkwMTM2NzE5LDAuMF19LHsiY29tcG9uZW50VHlwZSI6NTEyNiwidHlwZSI6IlZFQzMiLCJieXRlT2Zmc2V0IjowLCJidWZmZXJWaWV3Ijo1OSwiY291bnQiOjI0LCJtYXgiOlsxNC4xNDM3OTk3ODE3OTkzMTYsMTIuOTUyNDAwMjA3NTE5NTMxLDIuNzAwMDAwMDQ3NjgzNzE2XSwibWluIjpbOS43NzIzOTk5MDIzNDM3NSwxMi44MDAwMDAxOTA3MzQ4NjMsMC4wXX0seyJjb21wb25lbnRUeXBlIjo1MTI2LCJ0eXBlIjoiVkVDMyIsImJ5dGVPZmZzZXQiOjAsImJ1ZmZlclZpZXciOjYwLCJjb3VudCI6MjQsIm1heCI6WzE0LjE0Mzc5OTc4MTc5OTMxNiw5LjU5MjgwMDE0MDM4MDg2LDIuNzAwMDAwMDQ3NjgzNzE2XSwibWluIjpbOS43NzIzOTk5MDIzNDM3NSw5LjQ0MDUwMDI1OTM5OTQxNCwwLjBdfSx7ImNvbXBvbmVudFR5cGUiOjUxMjYsInR5cGUiOiJWRUMzIiwiYnl0ZU9mZnNldCI6MCwiYnVmZmVyVmlldyI6NjEsImNvdW50IjoyNCwibWF4IjpbMTEuMzYwNjk5NjUzNjI1NDg4LDkuNTkyODAwMTQwMzgwODYsMi43MDAwMDAwNDc2ODM3MTZdLCJtaW4iOlsxMS4yMDgyOTk2MzY4NDA4Miw0LjE1NDMwMDIxMjg2MDEwNywwLjBdfSx7ImNvbXBvbmVudFR5cGUiOjUxMjYsInR5cGUiOiJWRUMzIiwiYnl0ZU9mZnNldCI6MCwiYnVmZmVyVmlldyI6NjIsImNvdW50Ijo4LCJtYXgiOlsxNS4xNjYwMDAzNjYyMTA5MzgsMTMuOTE0ODk5ODI2MDQ5ODA1LDIuNzAwMDAwMDQ3NjgzNzE2XSwibWluIjpbMTQuNzQ3MDk5ODc2NDAzODA5LDkuNTMxMjAwNDA4OTM1NTQ3LDAuMF19LHsiY29tcG9uZW50VHlwZSI6NTEyNiwidHlwZSI6IlZFQzMiLCJieXRlT2Zmc2V0IjowLCJidWZmZXJWaWV3Ijo2MywiY291bnQiOjgsIm1heCI6WzE5LjIzMTM5OTUzNjEzMjgxMiwxMy45MTQ4OTk4MjYwNDk4MDUsMi43MDAwMDAwNDc2ODM3MTZdLCJtaW4iOlsxNC43NDcwOTk4NzY0MDM4MDksMTMuNDk2MDAwMjg5OTE2OTkyLDAuMF19LHsiY29tcG9uZW50VHlwZSI6NTEyNiwidHlwZSI6IlZFQzMiLCJieXRlT2Zmc2V0IjowLCJidWZmZXJWaWV3Ijo2NCwiY291bnQiOjgsIm1heCI6WzE5LjIzMTM5OTUzNjEzMjgxMiwxMy45MTQ4OTk4MjYwNDk4MDUsMi43MDAwMDAwNDc2ODM3MTZdLCJtaW4iOlsxOC44MTI1LDkuNTMxMjAwNDA4OTM1NTQ3LDAuMF19LHsiY29tcG9uZW50VHlwZSI6NTEyNiwidHlwZSI6IlZFQzMiLCJieXRlT2Zmc2V0IjowLCJidWZmZXJWaWV3Ijo2NSwiY291bnQiOjgsIm1heCI6WzE5LjIzMTM5OTUzNjEzMjgxMiw5Ljk1MDA5OTk0NTA2ODM2LDIuNzAwMDAwMDQ3NjgzNzE2XSwibWluIjpbMTQuNzQ3MDk5ODc2NDAzODA5LDkuNTMxMjAwNDA4OTM1NTQ3LDAuMF19LHsiY29tcG9uZW50VHlwZSI6NTEyNiwidHlwZSI6IlZFQzMiLCJieXRlT2Zmc2V0IjowLCJidWZmZXJWaWV3Ijo2NiwiY291bnQiOjgsIm1heCI6WzkuOTEyMTk5OTc0MDYwMDU5LDQuNTE0NDAwMDA1MzQwNTc2LDIuNzAwMDAwMDQ3NjgzNzE2XSwibWluIjpbOS4yNzgzMDAyODUzMzkzNTUsNC40MTkxOTk5NDM1NDI0ODA1LDAuMF19LHsiY29tcG9uZW50VHlwZSI6NTEyNiwidHlwZSI6IlZFQzMiLCJieXRlT2Zmc2V0IjowLCJidWZmZXJWaWV3Ijo2NywiY291bnQiOjgsIm1heCI6WzUuMzQ4OTk5OTc3MTExODE2LDguMDIyODk5NjI3Njg1NTQ3LDIuNzAwMDAwMDQ3NjgzNzE2XSwibWluIjpbNS4xOTY3MDAwOTYxMzAzNzEsMi42MjMzOTk5NzI5MTU2NDk0LDAuMF19LHsiY29tcG9uZW50VHlwZSI6NTEyNiwidHlwZSI6IlZFQzMiLCJieXRlT2Zmc2V0IjowLCJidWZmZXJWaWV3Ijo2OCwiY291bnQiOjgsIm1heCI6WzMuMjkyMjk5OTg1ODg1NjIsMTMuMjM0MDAwMjA1OTkzNjUyLDAuODk5OTk5OTc2MTU4MTQyMV0sIm1pbiI6WzIuNjkyMzAwMDgxMjUzMDUxOCwxMS43NTU1OTk5NzU1ODU5MzgsMC4wXX0seyJjb21wb25lbnRUeXBlIjo1MTIxLCJub3JtYWxpemVkIjp0cnVlLCJ0eXBlIjoiVkVDNCIsImJ5dGVPZmZzZXQiOjAsImJ1ZmZlclZpZXciOjY5LCJjb3VudCI6OCwibWF4IjpbMjMyLDIyOCwyMjAsMjU1XSwibWluIjpbMjMyLDIyOCwyMjAsMjU1XX0seyJjb21wb25lbnRUeXBlIjo1MTI2LCJ0eXBlIjoiVkVDMyIsImJ5dGVPZmZzZXQiOjAsImJ1ZmZlclZpZXciOjcwLCJjb3VudCI6OCwibWF4IjpbMi4wOTc4MDAwMTY0MDMxOTgyLDcuODUxNTAwMDM0MzMyMjc1LDEuMF0sIm1pbiI6WzAuNDU2OTk5OTg3MzYzODE1Myw3LjU1NjYwMDA5Mzg0MTU1MywwLjBdfSx7ImNvbXBvbmVudFR5cGUiOjUxMjEsIm5vcm1hbGl6ZWQiOnRydWUsInR5cGUiOiJWRUM0IiwiYnl0ZU9mZnNldCI6MCwiYnVmZmVyVmlldyI6NzEsImNvdW50Ijo4LCJtYXgiOlsyMTUsMjEwLDIwMCwyNTVdLCJtaW4iOlsyMTUsMjEwLDIwMCwyNTVdfSx7ImNvbXBvbmVudFR5cGUiOjUxMjYsInR5cGUiOiJWRUMzIiwiYnl0ZU9mZnNldCI6MCwiYnVmZmVyVmlldyI6NzIsImNvdW50Ijo4LCJtYXgiOls5LjY2NDQwMDEwMDcwODAwOCwzLjc4MjI5OTk5NTQyMjM2MzMsMS4wXSwibWluIjpbOS40MTE0OTk5NzcxMTE4MTYsMy4wODAzOTk5OTAwODE3ODcsMC4wXX0seyJjb21wb25lbnRUeXBlIjo1MTI2LCJ0eXBlIjoiVkVDMyIsImJ5dGVPZmZzZXQiOjAsImJ1ZmZlclZpZXciOjczLCJjb3VudCI6OCwibWF4IjpbMTIuNTc1Nzk5OTQyMDE2NjAyLDcuNjc4MTAwMTA5MTAwMzQyLDAuNV0sIm1pbiI6WzExLjM2MDY5OTY1MzYyNTQ4OCw3LjIzOTk5OTc3MTExODE2NCwwLjBdfSx7ImNvbXBvbmVudFR5cGUiOjUxMjEsIm5vcm1hbGl6ZWQiOnRydWUsInR5cGUiOiJWRUM0IiwiYnl0ZU9mZnNldCI6MCwiYnVmZmVyVmlldyI6NzQsImNvdW50Ijo4LCJtYXgiOlsxOTYsMTYwLDExOCwyNTVdLCJtaW4iOlsxOTYsMTYwLDExOCwyNTVdfSx7ImNvbXBvbmVudFR5cGUiOjUxMjUsInR5cGUiOiJTQ0FMQVIiLCJidWZmZXJWaWV3Ijo3NSwiY291bnQiOjE4MCwibWF4IjpbMzldLCJtaW4iOlswXX0seyJjb21wb25lbnRUeXBlIjo1MTI2LCJ0eXBlIjoiVkVDMyIsImJ5dGVPZmZzZXQiOjAsImJ1ZmZlclZpZXciOjc2LCJjb3VudCI6NDAsIm1heCI6WzkuNzcyMzk5OTAyMzQzNzUsMTIuMTI0Nzk5NzI4MzkzNTU1LDIuNzVdLCJtaW4iOls5LjEzOTMwMDM0NjM3NDUxMiwxMC42MzExOTk4MzY3MzA5NTcsMC4wXX0seyJjb21wb25lbnRUeXBlIjo1MTIxLCJub3JtYWxpemVkIjp0cnVlLCJ0eXBlIjoiVkVDNCIsImJ5dGVPZmZzZXQiOjAsImJ1ZmZlclZpZXciOjc3LCJjb3VudCI6NDAsIm1heCI6WzE5MCwxNzAsMTQ1LDI1NV0sIm1pbiI6WzE5MCwxNzAsMTQ1LDI1NV19XSwibWVzaGVzIjpbeyJuYW1lIjoiTDBfZmxvb3JfRjBfUjBfMCIsImV4dHJhcyI6eyJwcm9jZXNzZWQiOnRydWV9LCJwcmltaXRpdmVzIjpbeyJhdHRyaWJ1dGVzIjp7IlBPU0lUSU9OIjoxLCJDT0xPUl8wIjoyfSwiaW5kaWNlcyI6MCwibW9kZSI6NH1dfSx7Im5hbWUiOiJMMF9mbG9vcl9GMF9SMV8wIiwiZXh0cmFzIjp7InByb2Nlc3NlZCI6dHJ1ZX0sInByaW1pdGl2ZXMiOlt7ImF0dHJpYnV0ZXMiOnsiUE9TSVRJT04iOjQsIkNPTE9SXzAiOjV9LCJpbmRpY2VzIjozLCJtb2RlIjo0fV19LHsibmFtZSI6IkwwX2Zsb29yX0YwX1IyXzAiLCJleHRyYXMiOnsicHJvY2Vzc2VkIjp0cnVlfSwicHJpbWl0aXZlcyI6W3siYXR0cmlidXRlcyI6eyJQT1NJVElPTiI6NywiQ09MT1JfMCI6OH0sImluZGljZXMiOjYsIm1vZGUiOjR9XX0seyJuYW1lIjoiTDBfZmxvb3JfRjBfUjNfMCIsImV4dHJhcyI6eyJwcm9jZXNzZWQiOnRydWV9LCJwcmltaXRpdmVzIjpbeyJhdHRyaWJ1dGVzIjp7IlBPU0lUSU9OIjoxMCwiQ09MT1JfMCI6MTF9LCJpbmRpY2VzIjo5LCJtb2RlIjo0fV19LHsibmFtZSI6IkwwX2Zsb29yX0YwX1I0XzAiLCJleHRyYXMiOnsicHJvY2Vzc2VkIjp0cnVlfSwicHJpbWl0aXZlcyI6W3siYXR0cmlidXRlcyI6eyJQT1NJVElPTiI6MTIsIkNPTE9SXzAiOjEzfSwiaW5kaWNlcyI6OSwibW9kZSI6NH1dfSx7Im5hbWUiOiJMMF9mbG9vcl9GMF9SNV8wIiwiZXh0cmFzIjp7InByb2Nlc3NlZCI6dHJ1ZX0sInByaW1pdGl2ZXMiOlt7ImF0dHJpYnV0ZXMiOnsiUE9TSVRJT04iOjE1LCJDT0xPUl8wIjoxNn0sImluZGljZXMiOjE0LCJtb2RlIjo0fV19LHsibmFtZSI6IkwwX2Zsb29yX0YwX1I2XzAiLCJleHRyYXMiOnsicHJvY2Vzc2VkIjp0cnVlfSwicHJpbWl0aXZlcyI6W3siYXR0cmlidXRlcyI6eyJQT1NJVElPTiI6MTcsIkNPTE9SXzAiOjE4fSwiaW5kaWNlcyI6OSwibW9kZSI6NH1dfSx7Im5hbWUiOiJMMF9mbG9vcl9GMF9SN18wIiwiZXh0cmFzIjp7InByb2Nlc3NlZCI6dHJ1ZX0sInByaW1pdGl2ZXMiOlt7ImF0dHJpYnV0ZXMiOnsiUE9TSVRJT04iOjE5LCJDT0xPUl8wIjoyMH0sImluZGljZXMiOjksIm1vZGUiOjR9XX0seyJuYW1lIjoiTDBfZmxvb3JfRjBfUjhfMCIsImV4dHJhcyI6eyJwcm9jZXNzZWQiOnRydWV9LCJwcmltaXRpdmVzIjpbeyJhdHRyaWJ1dGVzIjp7IlBPU0lUSU9OIjoyMSwiQ09MT1JfMCI6MTh9LCJpbmRpY2VzIjo5LCJtb2RlIjo0fV19LHsibmFtZSI6IkwwX2Zsb29yX0YwX1I5XzAiLCJleHRyYXMiOnsicHJvY2Vzc2VkIjp0cnVlfSwicHJpbWl0aXZlcyI6W3siYXR0cmlidXRlcyI6eyJQT1NJVElPTiI6MjIsIkNPTE9SXzAiOjEzfSwiaW5kaWNlcyI6OSwibW9kZSI6NH1dfSx7Im5hbWUiOiJMMF9mbG9vcl9GMF9SMTBfMCIsImV4dHJhcyI6eyJwcm9jZXNzZWQiOnRydWV9LCJwcmltaXRpdmVzIjpbeyJhdHRyaWJ1dGVzIjp7IlBPU0lUSU9OIjoyMywiQ09MT1JfMCI6MTh9LCJpbmRpY2VzIjo5LCJtb2RlIjo0fV19LHsibmFtZSI6IkwwX2Zsb29yX0YwX1IxMV8wIiwiZXh0cmFzIjp7InByb2Nlc3NlZCI6dHJ1ZX0sInByaW1pdGl2ZXMiOlt7ImF0dHJpYnV0ZXMiOnsiUE9TSVRJT04iOjI0LCJDT0xPUl8wIjoxOH0sImluZGljZXMiOjksIm1vZGUiOjR9XX0seyJuYW1lIjoiTDBfZmxvb3JfRjBfUjEyXzAiLCJleHRyYXMiOnsicHJvY2Vzc2VkIjp0cnVlfSwicHJpbWl0aXZlcyI6W3siYXR0cmlidXRlcyI6eyJQT1NJVElPTiI6MjUsIkNPTE9SXzAiOjI2fSwiaW5kaWNlcyI6MTQsIm1vZGUiOjR9XX0seyJuYW1lIjoiTDBfZmxvb3JfRjBfUjEzXzAiLCJleHRyYXMiOnsicHJvY2Vzc2VkIjp0cnVlfSwicHJpbWl0aXZlcyI6W3siYXR0cmlidXRlcyI6eyJQT1NJVElPTiI6MjcsIkNPTE9SXzAiOjE4fSwiaW5kaWNlcyI6OSwibW9kZSI6NH1dfSx7Im5hbWUiOiJMMF93YWxsX0YwX1cwIiwiZXh0cmFzIjp7fSwicHJpbWl0aXZlcyI6W3siYXR0cmlidXRlcyI6eyJQT1NJVElPTiI6MjksIkNPTE9SXzAiOjMwfSwiaW5kaWNlcyI6MjgsIm1vZGUiOjR9XX0seyJuYW1lIjoiTDBfd2FsbF9GMF9XMSIsImV4dHJhcyI6eyJwcm9jZXNzZWQiOnRydWV9LCJwcmltaXRpdmVzIjpbeyJhdHRyaWJ1dGVzIjp7IlBPU0lUSU9OIjozMSwiQ09MT1JfMCI6MzJ9LCJpbmRpY2VzIjo5LCJtb2RlIjo0fV19LHsibmFtZSI6IkwwX3dhbGxfRjBfVzIiLCJleHRyYXMiOnt9LCJwcmltaXRpdmVzIjpbeyJhdHRyaWJ1dGVzIjp7IlBPU0lUSU9OIjozNCwiQ09MT1JfMCI6MzV9LCJpbmRpY2VzIjozMywibW9kZSI6NH1dfSx7Im5hbWUiOiJMMF93YWxsX0YwX1czIiwiZXh0cmFzIjp7InByb2Nlc3NlZCI6dHJ1ZX0sInByaW1pdGl2ZXMiOlt7ImF0dHJpYnV0ZXMiOnsiUE9TSVRJT04iOjM2LCJDT0xPUl8wIjozMn0sImluZGljZXMiOjksIm1vZGUiOjR9XX0seyJuYW1lIjoiTDBfd2FsbF9GMF9XNCIsImV4dHJhcyI6eyJwcm9jZXNzZWQiOnRydWV9LCJwcmltaXRpdmVzIjpbeyJhdHRyaWJ1dGVzIjp7IlBPU0lUSU9OIjozNywiQ09MT1JfMCI6MzJ9LCJpbmRpY2VzIjo5LCJtb2RlIjo0fV19LHsibmFtZSI6IkwwX3dhbGxfRjBfVzUiLCJleHRyYXMiOnt9LCJwcmltaXRpdmVzIjpbeyJhdHRyaWJ1dGVzIjp7IlBPU0lUSU9OIjozOSwiQ09MT1JfMCI6NDB9LCJpbmRpY2VzIjozOCwibW9kZSI6NH1dfSx7Im5hbWUiOiJMMF93YWxsX0YwX1c2IiwiZXh0cmFzIjp7fSwicHJpbWl0aXZlcyI6W3siYXR0cmlidXRlcyI6eyJQT1NJVElPTiI6NDIsIkNPTE9SXzAiOjQzfSwiaW5kaWNlcyI6NDEsIm1vZGUiOjR9XX0seyJuYW1lIjoiTDBfd2FsbF9GMF9XNyIsImV4dHJhcyI6eyJwcm9jZXNzZWQiOnRydWV9LCJwcmltaXRpdmVzIjpbeyJhdHRyaWJ1dGVzIjp7IlBPU0lUSU9OIjo0NCwiQ09MT1JfMCI6MzJ9LCJpbmRpY2VzIjo5LCJtb2RlIjo0fV19LHsibmFtZSI6IkwwX3dhbGxfRjBfVzgiLCJleHRyYXMiOnsicHJvY2Vzc2VkIjp0cnVlfSwicHJpbWl0aXZlcyI6W3siYXR0cmlidXRlcyI6eyJQT1NJVElPTiI6NDUsIkNPTE9SXzAiOjQ2fSwiaW5kaWNlcyI6OSwibW9kZSI6NH1dfSx7Im5hbWUiOiJMMF93YWxsX0YwX1c5IiwiZXh0cmFzIjp7InByb2Nlc3NlZCI6dHJ1ZX0sInByaW1pdGl2ZXMiOlt7ImF0dHJpYnV0ZXMiOnsiUE9TSVRJT04iOjQ3LCJDT0xPUl8wIjo0Nn0sImluZGljZXMiOjksIm1vZGUiOjR9XX0seyJuYW1lIjoiTDBfd2FsbF9GMF9XMTAiLCJleHRyYXMiOnt9LCJwcmltaXRpdmVzIjpbeyJhdHRyaWJ1dGVzIjp7IlBPU0lUSU9OIjo0OSwiQ09MT1JfMCI6NTB9LCJpbmRpY2VzIjo0OCwibW9kZSI6NH1dfSx7Im5hbWUiOiJMMF93YWxsX0YwX1cxMSIsImV4dHJhcyI6e30sInByaW1pdGl2ZXMiOlt7ImF0dHJpYnV0ZXMiOnsiUE9TSVRJT04iOjUxLCJDT0xPUl8wIjo1Mn0sImluZGljZXMiOjM4LCJtb2RlIjo0fV19LHsibmFtZSI6IkwwX3dhbGxfRjBfVzEyIiwiZXh0cmFzIjp7InByb2Nlc3NlZCI6dHJ1ZX0sInByaW1pdGl2ZXMiOlt7ImF0dHJpYnV0ZXMiOnsiUE9TSVRJT04iOjUzLCJDT0xPUl8wIjo0Nn0sImluZGljZXMiOjksIm1vZGUiOjR9XX0seyJuYW1lIjoiTDBfd2FsbF9GMF9XMTMiLCJleHRyYXMiOnt9LCJwcmltaXRpdmVzIjpbeyJhdHRyaWJ1dGVzIjp7IlBPU0lUSU9OIjo1NCwiQ09MT1JfMCI6NTJ9LCJpbmRpY2VzIjozOCwibW9kZSI6NH1dfSx7Im5hbWUiOiJMMF93YWxsX0YwX1cxNCIsImV4dHJhcyI6e30sInByaW1pdGl2ZXMiOlt7ImF0dHJpYnV0ZXMiOnsiUE9TSVRJT04iOjU1LCJDT0xPUl8wIjo1Mn0sImluZGljZXMiOjM4LCJtb2RlIjo0fV19LHsibmFtZSI6IkwwX3dhbGxfRjBfVzE1IiwiZXh0cmFzIjp7fSwicHJpbWl0aXZlcyI6W3siYXR0cmlidXRlcyI6eyJQT1NJVElPTiI6NTcsIkNPTE9SXzAiOjUyfSwiaW5kaWNlcyI6NTYsIm1vZGUiOjR9XX0seyJuYW1lIjoiTDBfd2FsbF9GMF9XMTYiLCJleHRyYXMiOnsicHJvY2Vzc2VkIjp0cnVlfSwicHJpbWl0aXZlcyI6W3siYXR0cmlidXRlcyI6eyJQT1NJVElPTiI6NTgsIkNPTE9SXzAiOjQ2fSwiaW5kaWNlcyI6OSwibW9kZSI6NH1dfSx7Im5hbWUiOiJMMF93YWxsX0YwX1cxNyIsImV4dHJhcyI6e30sInByaW1pdGl2ZXMiOlt7ImF0dHJpYnV0ZXMiOnsiUE9TSVRJT04iOjU5LCJDT0xPUl8wIjo1Mn0sImluZGljZXMiOjM4LCJtb2RlIjo0fV19LHsibmFtZSI6IkwwX3dhbGxfRjBfVzE4IiwiZXh0cmFzIjp7fSwicHJpbWl0aXZlcyI6W3siYXR0cmlidXRlcyI6eyJQT1NJVElPTiI6NjAsIkNPTE9SXzAiOjUyfSwiaW5kaWNlcyI6MzgsIm1vZGUiOjR9XX0seyJuYW1lIjoiTDBfd2FsbF9GMF9XMTkiLCJleHRyYXMiOnt9LCJwcmltaXRpdmVzIjpbeyJhdHRyaWJ1dGVzIjp7IlBPU0lUSU9OIjo2MSwiQ09MT1JfMCI6NTJ9LCJpbmRpY2VzIjozOCwibW9kZSI6NH1dfSx7Im5hbWUiOiJMMF93YWxsX0YwX1cyMCIsImV4dHJhcyI6eyJwcm9jZXNzZWQiOnRydWV9LCJwcmltaXRpdmVzIjpbeyJhdHRyaWJ1dGVzIjp7IlBPU0lUSU9OIjo2MiwiQ09MT1JfMCI6NDZ9LCJpbmRpY2VzIjo5LCJtb2RlIjo0fV19LHsibmFtZSI6IkwwX3dhbGxfRjBfVzIxIiwiZXh0cmFzIjp7InByb2Nlc3NlZCI6dHJ1ZX0sInByaW1pdGl2ZXMiOlt7ImF0dHJpYnV0ZXMiOnsiUE9TSVRJT04iOjYzLCJDT0xPUl8wIjo0Nn0sImluZGljZXMiOjksIm1vZGUiOjR9XX0seyJuYW1lIjoiTDBfd2FsbF9GMF9XMjIiLCJleHRyYXMiOnsicHJvY2Vzc2VkIjp0cnVlfSwicHJpbWl0aXZlcyI6W3siYXR0cmlidXRlcyI6eyJQT1NJVElPTiI6NjQsIkNPTE9SXzAiOjQ2fSwiaW5kaWNlcyI6OSwibW9kZSI6NH1dfSx7Im5hbWUiOiJMMF93YWxsX0YwX1cyMyIsImV4dHJhcyI6eyJwcm9jZXNzZWQiOnRydWV9LCJwcmltaXRpdmVzIjpbeyJhdHRyaWJ1dGVzIjp7IlBPU0lUSU9OIjo2NSwiQ09MT1JfMCI6NDZ9LCJpbmRpY2VzIjo5LCJtb2RlIjo0fV19LHsibmFtZSI6IkwwX3dhbGxfRjBfVzI0IiwiZXh0cmFzIjp7InByb2Nlc3NlZCI6dHJ1ZX0sInByaW1pdGl2ZXMiOlt7ImF0dHJpYnV0ZXMiOnsiUE9TSVRJT04iOjY2LCJDT0xPUl8wIjo0Nn0sImluZGljZXMiOjksIm1vZGUiOjR9XX0seyJuYW1lIjoiTDBfd2FsbF9GMF9XMjUiLCJleHRyYXMiOnsicHJvY2Vzc2VkIjp0cnVlfSwicHJpbWl0aXZlcyI6W3siYXR0cmlidXRlcyI6eyJQT1NJVElPTiI6NjcsIkNPTE9SXzAiOjQ2fSwiaW5kaWNlcyI6OSwibW9kZSI6NH1dfSx7Im5hbWUiOiJMMF9maXh0dXJlX0YwX1gwIiwiZXh0cmFzIjp7InByb2Nlc3NlZCI6dHJ1ZX0sInByaW1pdGl2ZXMiOlt7ImF0dHJpYnV0ZXMiOnsiUE9TSVRJT04iOjY4LCJDT0xPUl8wIjo2OX0sImluZGljZXMiOjksIm1vZGUiOjR9XX0seyJuYW1lIjoiTDBfZml4dHVyZV9GMF9YMSIsImV4dHJhcyI6eyJwcm9jZXNzZWQiOnRydWV9LCJwcmltaXRpdmVzIjpbeyJhdHRyaWJ1dGVzIjp7IlBPU0lUSU9OIjo3MCwiQ09MT1JfMCI6NzF9LCJpbmRpY2VzIjo5LCJtb2RlIjo0fV19LHsibmFtZSI6IkwwX2ZpeHR1cmVfRjBfWDIiLCJleHRyYXMiOnsicHJvY2Vzc2VkIjp0cnVlfSwicHJpbWl0aXZlcyI6W3siYXR0cmlidXRlcyI6eyJQT1NJVElPTiI6NzIsIkNPTE9SXzAiOjcxfSwiaW5kaWNlcyI6OSwibW9kZSI6NH1dfSx7Im5hbWUiOiJMMF9maXh0dXJlX0YwX1gzIiwiZXh0cmFzIjp7InByb2Nlc3NlZCI6dHJ1ZX0sInByaW1pdGl2ZXMiOlt7ImF0dHJpYnV0ZXMiOnsiUE9TSVRJT04iOjczLCJDT0xPUl8wIjo3NH0sImluZGljZXMiOjksIm1vZGUiOjR9XX0seyJuYW1lIjoiTDBfZml4dHVyZV9GMF9YNCIsImV4dHJhcyI6e30sInByaW1pdGl2ZXMiOlt7ImF0dHJpYnV0ZXMiOnsiUE9TSVRJT04iOjc2LCJDT0xPUl8wIjo3N30sImluZGljZXMiOjc1LCJtb2RlIjo0fV19XSwibm9kZXMiOlt7Im5hbWUiOiJMMF9mbG9vcl9GMF9SMF8wIiwibWVzaCI6MCwibWF0cml4IjpbMS4wLDAuMCwwLjAsMC4wLDAuMCw2LjEyMzIzMzk5NTczNjc2NmUtMTcsLTEuMCwwLjAsMC4wLDEuMCw2LjEyMzIzMzk5NTczNjc2NmUtMTcsMC4wLDAuMCwwLjAsMC4wLDEuMF19LHsibmFtZSI6IkwwX2Zsb29yX0YwX1IxXzAiLCJtZXNoIjoxLCJtYXRyaXgiOlsxLjAsMC4wLDAuMCwwLjAsMC4wLDYuMTIzMjMzOTk1NzM2NzY2ZS0xNywtMS4wLDAuMCwwLjAsMS4wLDYuMTIzMjMzOTk1NzM2NzY2ZS0xNywwLjAsMC4wLDAuMCwwLjAsMS4wXX0seyJuYW1lIjoiTDBfZmxvb3JfRjBfUjJfMCIsIm1lc2giOjIsIm1hdHJpeCI6WzEuMCwwLjAsMC4wLDAuMCwwLjAsNi4xMjMyMzM5OTU3MzY3NjZlLTE3LC0xLjAsMC4wLDAuMCwxLjAsNi4xMjMyMzM5OTU3MzY3NjZlLTE3LDAuMCwwLjAsMC4wLDAuMCwxLjBdfSx7Im5hbWUiOiJMMF9mbG9vcl9GMF9SM18wIiwibWVzaCI6MywibWF0cml4IjpbMS4wLDAuMCwwLjAsMC4wLDAuMCw2LjEyMzIzMzk5NTczNjc2NmUtMTcsLTEuMCwwLjAsMC4wLDEuMCw2LjEyMzIzMzk5NTczNjc2NmUtMTcsMC4wLDAuMCwwLjAsMC4wLDEuMF19LHsibmFtZSI6IkwwX2Zsb29yX0YwX1I0XzAiLCJtZXNoIjo0LCJtYXRyaXgiOlsxLjAsMC4wLDAuMCwwLjAsMC4wLDYuMTIzMjMzOTk1NzM2NzY2ZS0xNywtMS4wLDAuMCwwLjAsMS4wLDYuMTIzMjMzOTk1NzM2NzY2ZS0xNywwLjAsMC4wLDAuMCwwLjAsMS4wXX0seyJuYW1lIjoiTDBfZmxvb3JfRjBfUjVfMCIsIm1lc2giOjUsIm1hdHJpeCI6WzEuMCwwLjAsMC4wLDAuMCwwLjAsNi4xMjMyMzM5OTU3MzY3NjZlLTE3LC0xLjAsMC4wLDAuMCwxLjAsNi4xMjMyMzM5OTU3MzY3NjZlLTE3LDAuMCwwLjAsMC4wLDAuMCwxLjBdfSx7Im5hbWUiOiJMMF9mbG9vcl9GMF9SNl8wIiwibWVzaCI6NiwibWF0cml4IjpbMS4wLDAuMCwwLjAsMC4wLDAuMCw2LjEyMzIzMzk5NTczNjc2NmUtMTcsLTEuMCwwLjAsMC4wLDEuMCw2LjEyMzIzMzk5NTczNjc2NmUtMTcsMC4wLDAuMCwwLjAsMC4wLDEuMF19LHsibmFtZSI6IkwwX2Zsb29yX0YwX1I3XzAiLCJtZXNoIjo3LCJtYXRyaXgiOlsxLjAsMC4wLDAuMCwwLjAsMC4wLDYuMTIzMjMzOTk1NzM2NzY2ZS0xNywtMS4wLDAuMCwwLjAsMS4wLDYuMTIzMjMzOTk1NzM2NzY2ZS0xNywwLjAsMC4wLDAuMCwwLjAsMS4wXX0seyJuYW1lIjoiTDBfZmxvb3JfRjBfUjhfMCIsIm1lc2giOjgsIm1hdHJpeCI6WzEuMCwwLjAsMC4wLDAuMCwwLjAsNi4xMjMyMzM5OTU3MzY3NjZlLTE3LC0xLjAsMC4wLDAuMCwxLjAsNi4xMjMyMzM5OTU3MzY3NjZlLTE3LDAuMCwwLjAsMC4wLDAuMCwxLjBdfSx7Im5hbWUiOiJMMF9mbG9vcl9GMF9SOV8wIiwibWVzaCI6OSwibWF0cml4IjpbMS4wLDAuMCwwLjAsMC4wLDAuMCw2LjEyMzIzMzk5NTczNjc2NmUtMTcsLTEuMCwwLjAsMC4wLDEuMCw2LjEyMzIzMzk5NTczNjc2NmUtMTcsMC4wLDAuMCwwLjAsMC4wLDEuMF19LHsibmFtZSI6IkwwX2Zsb29yX0YwX1IxMF8wIiwibWVzaCI6MTAsIm1hdHJpeCI6WzEuMCwwLjAsMC4wLDAuMCwwLjAsNi4xMjMyMzM5OTU3MzY3NjZlLTE3LC0xLjAsMC4wLDAuMCwxLjAsNi4xMjMyMzM5OTU3MzY3NjZlLTE3LDAuMCwwLjAsMC4wLDAuMCwxLjBdfSx7Im5hbWUiOiJMMF9mbG9vcl9GMF9SMTFfMCIsIm1lc2giOjExLCJtYXRyaXgiOlsxLjAsMC4wLDAuMCwwLjAsMC4wLDYuMTIzMjMzOTk1NzM2NzY2ZS0xNywtMS4wLDAuMCwwLjAsMS4wLDYuMTIzMjMzOTk1NzM2NzY2ZS0xNywwLjAsMC4wLDAuMCwwLjAsMS4wXX0seyJuYW1lIjoiTDBfZmxvb3JfRjBfUjEyXzAiLCJtZXNoIjoxMiwibWF0cml4IjpbMS4wLDAuMCwwLjAsMC4wLDAuMCw2LjEyMzIzMzk5NTczNjc2NmUtMTcsLTEuMCwwLjAsMC4wLDEuMCw2LjEyMzIzMzk5NTczNjc2NmUtMTcsMC4wLDAuMCwwLjAsMC4wLDEuMF19LHsibmFtZSI6IkwwX2Zsb29yX0YwX1IxM18wIiwibWVzaCI6MTMsIm1hdHJpeCI6WzEuMCwwLjAsMC4wLDAuMCwwLjAsNi4xMjMyMzM5OTU3MzY3NjZlLTE3LC0xLjAsMC4wLDAuMCwxLjAsNi4xMjMyMzM5OTU3MzY3NjZlLTE3LDAuMCwwLjAsMC4wLDAuMCwxLjBdfSx7Im5hbWUiOiJMMF93YWxsX0YwX1cwIiwibWVzaCI6MTQsIm1hdHJpeCI6WzEuMCwwLjAsMC4wLDAuMCwwLjAsNi4xMjMyMzM5OTU3MzY3NjZlLTE3LC0xLjAsMC4wLDAuMCwxLjAsNi4xMjMyMzM5OTU3MzY3NjZlLTE3LDAuMCwwLjAsMC4wLDAuMCwxLjBdfSx7Im5hbWUiOiJMMF93YWxsX0YwX1cxIiwibWVzaCI6MTUsIm1hdHJpeCI6WzEuMCwwLjAsMC4wLDAuMCwwLjAsNi4xMjMyMzM5OTU3MzY3NjZlLTE3LC0xLjAsMC4wLDAuMCwxLjAsNi4xMjMyMzM5OTU3MzY3NjZlLTE3LDAuMCwwLjAsMC4wLDAuMCwxLjBdfSx7Im5hbWUiOiJMMF93YWxsX0YwX1cyIiwibWVzaCI6MTYsIm1hdHJpeCI6WzEuMCwwLjAsMC4wLDAuMCwwLjAsNi4xMjMyMzM5OTU3MzY3NjZlLTE3LC0xLjAsMC4wLDAuMCwxLjAsNi4xMjMyMzM5OTU3MzY3NjZlLTE3LDAuMCwwLjAsMC4wLDAuMCwxLjBdfSx7Im5hbWUiOiJMMF93YWxsX0YwX1czIiwibWVzaCI6MTcsIm1hdHJpeCI6WzEuMCwwLjAsMC4wLDAuMCwwLjAsNi4xMjMyMzM5OTU3MzY3NjZlLTE3LC0xLjAsMC4wLDAuMCwxLjAsNi4xMjMyMzM5OTU3MzY3NjZlLTE3LDAuMCwwLjAsMC4wLDAuMCwxLjBdfSx7Im5hbWUiOiJMMF93YWxsX0YwX1c0IiwibWVzaCI6MTgsIm1hdHJpeCI6WzEuMCwwLjAsMC4wLDAuMCwwLjAsNi4xMjMyMzM5OTU3MzY3NjZlLTE3LC0xLjAsMC4wLDAuMCwxLjAsNi4xMjMyMzM5OTU3MzY3NjZlLTE3LDAuMCwwLjAsMC4wLDAuMCwxLjBdfSx7Im5hbWUiOiJMMF93YWxsX0YwX1c1IiwibWVzaCI6MTksIm1hdHJpeCI6WzEuMCwwLjAsMC4wLDAuMCwwLjAsNi4xMjMyMzM5OTU3MzY3NjZlLTE3LC0xLjAsMC4wLDAuMCwxLjAsNi4xMjMyMzM5OTU3MzY3NjZlLTE3LDAuMCwwLjAsMC4wLDAuMCwxLjBdfSx7Im5hbWUiOiJMMF93YWxsX0YwX1c2IiwibWVzaCI6MjAsIm1hdHJpeCI6WzEuMCwwLjAsMC4wLDAuMCwwLjAsNi4xMjMyMzM5OTU3MzY3NjZlLTE3LC0xLjAsMC4wLDAuMCwxLjAsNi4xMjMyMzM5OTU3MzY3NjZlLTE3LDAuMCwwLjAsMC4wLDAuMCwxLjBdfSx7Im5hbWUiOiJMMF93YWxsX0YwX1c3IiwibWVzaCI6MjEsIm1hdHJpeCI6WzEuMCwwLjAsMC4wLDAuMCwwLjAsNi4xMjMyMzM5OTU3MzY3NjZlLTE3LC0xLjAsMC4wLDAuMCwxLjAsNi4xMjMyMzM5OTU3MzY3NjZlLTE3LDAuMCwwLjAsMC4wLDAuMCwxLjBdfSx7Im5hbWUiOiJMMF93YWxsX0YwX1c4IiwibWVzaCI6MjIsIm1hdHJpeCI6WzEuMCwwLjAsMC4wLDAuMCwwLjAsNi4xMjMyMzM5OTU3MzY3NjZlLTE3LC0xLjAsMC4wLDAuMCwxLjAsNi4xMjMyMzM5OTU3MzY3NjZlLTE3LDAuMCwwLjAsMC4wLDAuMCwxLjBdfSx7Im5hbWUiOiJMMF93YWxsX0YwX1c5IiwibWVzaCI6MjMsIm1hdHJpeCI6WzEuMCwwLjAsMC4wLDAuMCwwLjAsNi4xMjMyMzM5OTU3MzY3NjZlLTE3LC0xLjAsMC4wLDAuMCwxLjAsNi4xMjMyMzM5OTU3MzY3NjZlLTE3LDAuMCwwLjAsMC4wLDAuMCwxLjBdfSx7Im5hbWUiOiJMMF93YWxsX0YwX1cxMCIsIm1lc2giOjI0LCJtYXRyaXgiOlsxLjAsMC4wLDAuMCwwLjAsMC4wLDYuMTIzMjMzOTk1NzM2NzY2ZS0xNywtMS4wLDAuMCwwLjAsMS4wLDYuMTIzMjMzOTk1NzM2NzY2ZS0xNywwLjAsMC4wLDAuMCwwLjAsMS4wXX0seyJuYW1lIjoiTDBfd2FsbF9GMF9XMTEiLCJtZXNoIjoyNSwibWF0cml4IjpbMS4wLDAuMCwwLjAsMC4wLDAuMCw2LjEyMzIzMzk5NTczNjc2NmUtMTcsLTEuMCwwLjAsMC4wLDEuMCw2LjEyMzIzMzk5NTczNjc2NmUtMTcsMC4wLDAuMCwwLjAsMC4wLDEuMF19LHsibmFtZSI6IkwwX3dhbGxfRjBfVzEyIiwibWVzaCI6MjYsIm1hdHJpeCI6WzEuMCwwLjAsMC4wLDAuMCwwLjAsNi4xMjMyMzM5OTU3MzY3NjZlLTE3LC0xLjAsMC4wLDAuMCwxLjAsNi4xMjMyMzM5OTU3MzY3NjZlLTE3LDAuMCwwLjAsMC4wLDAuMCwxLjBdfSx7Im5hbWUiOiJMMF93YWxsX0YwX1cxMyIsIm1lc2giOjI3LCJtYXRyaXgiOlsxLjAsMC4wLDAuMCwwLjAsMC4wLDYuMTIzMjMzOTk1NzM2NzY2ZS0xNywtMS4wLDAuMCwwLjAsMS4wLDYuMTIzMjMzOTk1NzM2NzY2ZS0xNywwLjAsMC4wLDAuMCwwLjAsMS4wXX0seyJuYW1lIjoiTDBfd2FsbF9GMF9XMTQiLCJtZXNoIjoyOCwibWF0cml4IjpbMS4wLDAuMCwwLjAsMC4wLDAuMCw2LjEyMzIzMzk5NTczNjc2NmUtMTcsLTEuMCwwLjAsMC4wLDEuMCw2LjEyMzIzMzk5NTczNjc2NmUtMTcsMC4wLDAuMCwwLjAsMC4wLDEuMF19LHsibmFtZSI6IkwwX3dhbGxfRjBfVzE1IiwibWVzaCI6MjksIm1hdHJpeCI6WzEuMCwwLjAsMC4wLDAuMCwwLjAsNi4xMjMyMzM5OTU3MzY3NjZlLTE3LC0xLjAsMC4wLDAuMCwxLjAsNi4xMjMyMzM5OTU3MzY3NjZlLTE3LDAuMCwwLjAsMC4wLDAuMCwxLjBdfSx7Im5hbWUiOiJMMF93YWxsX0YwX1cxNiIsIm1lc2giOjMwLCJtYXRyaXgiOlsxLjAsMC4wLDAuMCwwLjAsMC4wLDYuMTIzMjMzOTk1NzM2NzY2ZS0xNywtMS4wLDAuMCwwLjAsMS4wLDYuMTIzMjMzOTk1NzM2NzY2ZS0xNywwLjAsMC4wLDAuMCwwLjAsMS4wXX0seyJuYW1lIjoiTDBfd2FsbF9GMF9XMTciLCJtZXNoIjozMSwibWF0cml4IjpbMS4wLDAuMCwwLjAsMC4wLDAuMCw2LjEyMzIzMzk5NTczNjc2NmUtMTcsLTEuMCwwLjAsMC4wLDEuMCw2LjEyMzIzMzk5NTczNjc2NmUtMTcsMC4wLDAuMCwwLjAsMC4wLDEuMF19LHsibmFtZSI6IkwwX3dhbGxfRjBfVzE4IiwibWVzaCI6MzIsIm1hdHJpeCI6WzEuMCwwLjAsMC4wLDAuMCwwLjAsNi4xMjMyMzM5OTU3MzY3NjZlLTE3LC0xLjAsMC4wLDAuMCwxLjAsNi4xMjMyMzM5OTU3MzY3NjZlLTE3LDAuMCwwLjAsMC4wLDAuMCwxLjBdfSx7Im5hbWUiOiJMMF93YWxsX0YwX1cxOSIsIm1lc2giOjMzLCJtYXRyaXgiOlsxLjAsMC4wLDAuMCwwLjAsMC4wLDYuMTIzMjMzOTk1NzM2NzY2ZS0xNywtMS4wLDAuMCwwLjAsMS4wLDYuMTIzMjMzOTk1NzM2NzY2ZS0xNywwLjAsMC4wLDAuMCwwLjAsMS4wXX0seyJuYW1lIjoiTDBfd2FsbF9GMF9XMjAiLCJtZXNoIjozNCwibWF0cml4IjpbMS4wLDAuMCwwLjAsMC4wLDAuMCw2LjEyMzIzMzk5NTczNjc2NmUtMTcsLTEuMCwwLjAsMC4wLDEuMCw2LjEyMzIzMzk5NTczNjc2NmUtMTcsMC4wLDAuMCwwLjAsMC4wLDEuMF19LHsibmFtZSI6IkwwX3dhbGxfRjBfVzIxIiwibWVzaCI6MzUsIm1hdHJpeCI6WzEuMCwwLjAsMC4wLDAuMCwwLjAsNi4xMjMyMzM5OTU3MzY3NjZlLTE3LC0xLjAsMC4wLDAuMCwxLjAsNi4xMjMyMzM5OTU3MzY3NjZlLTE3LDAuMCwwLjAsMC4wLDAuMCwxLjBdfSx7Im5hbWUiOiJMMF93YWxsX0YwX1cyMiIsIm1lc2giOjM2LCJtYXRyaXgiOlsxLjAsMC4wLDAuMCwwLjAsMC4wLDYuMTIzMjMzOTk1NzM2NzY2ZS0xNywtMS4wLDAuMCwwLjAsMS4wLDYuMTIzMjMzOTk1NzM2NzY2ZS0xNywwLjAsMC4wLDAuMCwwLjAsMS4wXX0seyJuYW1lIjoiTDBfd2FsbF9GMF9XMjMiLCJtZXNoIjozNywibWF0cml4IjpbMS4wLDAuMCwwLjAsMC4wLDAuMCw2LjEyMzIzMzk5NTczNjc2NmUtMTcsLTEuMCwwLjAsMC4wLDEuMCw2LjEyMzIzMzk5NTczNjc2NmUtMTcsMC4wLDAuMCwwLjAsMC4wLDEuMF19LHsibmFtZSI6IkwwX3dhbGxfRjBfVzI0IiwibWVzaCI6MzgsIm1hdHJpeCI6WzEuMCwwLjAsMC4wLDAuMCwwLjAsNi4xMjMyMzM5OTU3MzY3NjZlLTE3LC0xLjAsMC4wLDAuMCwxLjAsNi4xMjMyMzM5OTU3MzY3NjZlLTE3LDAuMCwwLjAsMC4wLDAuMCwxLjBdfSx7Im5hbWUiOiJMMF93YWxsX0YwX1cyNSIsIm1lc2giOjM5LCJtYXRyaXgiOlsxLjAsMC4wLDAuMCwwLjAsMC4wLDYuMTIzMjMzOTk1NzM2NzY2ZS0xNywtMS4wLDAuMCwwLjAsMS4wLDYuMTIzMjMzOTk1NzM2NzY2ZS0xNywwLjAsMC4wLDAuMCwwLjAsMS4wXX0seyJuYW1lIjoiTDBfZml4dHVyZV9GMF9YMCIsIm1lc2giOjQwLCJtYXRyaXgiOlsxLjAsMC4wLDAuMCwwLjAsMC4wLDYuMTIzMjMzOTk1NzM2NzY2ZS0xNywtMS4wLDAuMCwwLjAsMS4wLDYuMTIzMjMzOTk1NzM2NzY2ZS0xNywwLjAsMC4wLDAuMCwwLjAsMS4wXX0seyJuYW1lIjoiTDBfZml4dHVyZV9GMF9YMSIsIm1lc2giOjQxLCJtYXRyaXgiOlsxLjAsMC4wLDAuMCwwLjAsMC4wLDYuMTIzMjMzOTk1NzM2NzY2ZS0xNywtMS4wLDAuMCwwLjAsMS4wLDYuMTIzMjMzOTk1NzM2NzY2ZS0xNywwLjAsMC4wLDAuMCwwLjAsMS4wXX0seyJuYW1lIjoiTDBfZml4dHVyZV9GMF9YMiIsIm1lc2giOjQyLCJtYXRyaXgiOlsxLjAsMC4wLDAuMCwwLjAsMC4wLDYuMTIzMjMzOTk1NzM2NzY2ZS0xNywtMS4wLDAuMCwwLjAsMS4wLDYuMTIzMjMzOTk1NzM2NzY2ZS0xNywwLjAsMC4wLDAuMCwwLjAsMS4wXX0seyJuYW1lIjoiTDBfZml4dHVyZV9GMF9YMyIsIm1lc2giOjQzLCJtYXRyaXgiOlsxLjAsMC4wLDAuMCwwLjAsMC4wLDYuMTIzMjMzOTk1NzM2NzY2ZS0xNywtMS4wLDAuMCwwLjAsMS4wLDYuMTIzMjMzOTk1NzM2NzY2ZS0xNywwLjAsMC4wLDAuMCwwLjAsMS4wXX0seyJuYW1lIjoiTDBfZml4dHVyZV9GMF9YNCIsIm1lc2giOjQ0LCJtYXRyaXgiOlsxLjAsMC4wLDAuMCwwLjAsMC4wLDYuMTIzMjMzOTk1NzM2NzY2ZS0xNywtMS4wLDAuMCwwLjAsMS4wLDYuMTIzMjMzOTk1NzM2NzY2ZS0xNywwLjAsMC4wLDAuMCwwLjAsMS4wXX1dLCJidWZmZXJzIjpbeyJieXRlTGVuZ3RoIjoxODI3Mn1dLCJidWZmZXJWaWV3cyI6W3siYnVmZmVyIjowLCJieXRlT2Zmc2V0IjowLCJieXRlTGVuZ3RoIjoyNDB9LHsiYnVmZmVyIjowLCJieXRlT2Zmc2V0IjoyNDAsImJ5dGVMZW5ndGgiOjE0NH0seyJidWZmZXIiOjAsImJ5dGVPZmZzZXQiOjM4NCwiYnl0ZUxlbmd0aCI6NDh9LHsiYnVmZmVyIjowLCJieXRlT2Zmc2V0Ijo0MzIsImJ5dGVMZW5ndGgiOjI4OH0seyJidWZmZXIiOjAsImJ5dGVPZmZzZXQiOjcyMCwiYnl0ZUxlbmd0aCI6MTY4fSx7ImJ1ZmZlciI6MCwiYnl0ZU9mZnNldCI6ODg4LCJieXRlTGVuZ3RoIjo1Nn0seyJidWZmZXIiOjAsImJ5dGVPZmZzZXQiOjk0NCwiYnl0ZUxlbmd0aCI6MjQwfSx7ImJ1ZmZlciI6MCwiYnl0ZU9mZnNldCI6MTE4NCwiYnl0ZUxlbmd0aCI6MTQ0fSx7ImJ1ZmZlciI6MCwiYnl0ZU9mZnNldCI6MTMyOCwiYnl0ZUxlbmd0aCI6NDh9LHsiYnVmZmVyIjowLCJieXRlT2Zmc2V0IjoxMzc2LCJieXRlTGVuZ3RoIjoxNDR9LHsiYnVmZmVyIjowLCJieXRlT2Zmc2V0IjoxNTIwLCJieXRlTGVuZ3RoIjo5Nn0seyJidWZmZXIiOjAsImJ5dGVPZmZzZXQiOjE2MTYsImJ5dGVMZW5ndGgiOjMyfSx7ImJ1ZmZlciI6MCwiYnl0ZU9mZnNldCI6MTY0OCwiYnl0ZUxlbmd0aCI6OTZ9LHsiYnVmZmVyIjowLCJieXRlT2Zmc2V0IjoxNzQ0LCJieXRlTGVuZ3RoIjozMn0seyJidWZmZXIiOjAsImJ5dGVPZmZzZXQiOjE3NzYsImJ5dGVMZW5ndGgiOjE5Mn0seyJidWZmZXIiOjAsImJ5dGVPZmZzZXQiOjE5NjgsImJ5dGVMZW5ndGgiOjEyMH0seyJidWZmZXIiOjAsImJ5dGVPZmZzZXQiOjIwODgsImJ5dGVMZW5ndGgiOjQwfSx7ImJ1ZmZlciI6MCwiYnl0ZU9mZnNldCI6MjEyOCwiYnl0ZUxlbmd0aCI6OTZ9LHsiYnVmZmVyIjowLCJieXRlT2Zmc2V0IjoyMjI0LCJieXRlTGVuZ3RoIjozMn0seyJidWZmZXIiOjAsImJ5dGVPZmZzZXQiOjIyNTYsImJ5dGVMZW5ndGgiOjk2fSx7ImJ1ZmZlciI6MCwiYnl0ZU9mZnNldCI6MjM1MiwiYnl0ZUxlbmd0aCI6MzJ9LHsiYnVmZmVyIjowLCJieXRlT2Zmc2V0IjoyMzg0LCJieXRlTGVuZ3RoIjo5Nn0seyJidWZmZXIiOjAsImJ5dGVPZmZzZXQiOjI0ODAsImJ5dGVMZW5ndGgiOjk2fSx7ImJ1ZmZlciI6MCwiYnl0ZU9mZnNldCI6MjU3NiwiYnl0ZUxlbmd0aCI6OTZ9LHsiYnVmZmVyIjowLCJieXRlT2Zmc2V0IjoyNjcyLCJieXRlTGVuZ3RoIjo5Nn0seyJidWZmZXIiOjAsImJ5dGVPZmZzZXQiOjI3NjgsImJ5dGVMZW5ndGgiOjEyMH0seyJidWZmZXIiOjAsImJ5dGVPZmZzZXQiOjI4ODgsImJ5dGVMZW5ndGgiOjQwfSx7ImJ1ZmZlciI6MCwiYnl0ZU9mZnNldCI6MjkyOCwiYnl0ZUxlbmd0aCI6OTZ9LHsiYnVmZmVyIjowLCJieXRlT2Zmc2V0IjozMDI0LCJieXRlTGVuZ3RoIjoxODcyfSx7ImJ1ZmZlciI6MCwiYnl0ZU9mZnNldCI6NDg5NiwiYnl0ZUxlbmd0aCI6MTI0OH0seyJidWZmZXIiOjAsImJ5dGVPZmZzZXQiOjYxNDQsImJ5dGVMZW5ndGgiOjQxNn0seyJidWZmZXIiOjAsImJ5dGVPZmZzZXQiOjY1NjAsImJ5dGVMZW5ndGgiOjk2fSx7ImJ1ZmZlciI6MCwiYnl0ZU9mZnNldCI6NjY1NiwiYnl0ZUxlbmd0aCI6MzJ9LHsiYnVmZmVyIjowLCJieXRlT2Zmc2V0Ijo2Njg4LCJieXRlTGVuZ3RoIjo4NjR9LHsiYnVmZmVyIjowLCJieXRlT2Zmc2V0Ijo3NTUyLCJieXRlTGVuZ3RoIjo1NzZ9LHsiYnVmZmVyIjowLCJieXRlT2Zmc2V0Ijo4MTI4LCJieXRlTGVuZ3RoIjoxOTJ9LHsiYnVmZmVyIjowLCJieXRlT2Zmc2V0Ijo4MzIwLCJieXRlTGVuZ3RoIjo5Nn0seyJidWZmZXIiOjAsImJ5dGVPZmZzZXQiOjg0MTYsImJ5dGVMZW5ndGgiOjk2fSx7ImJ1ZmZlciI6MCwiYnl0ZU9mZnNldCI6ODUxMiwiYnl0ZUxlbmd0aCI6NDMyfSx7ImJ1ZmZlciI6MCwiYnl0ZU9mZnNldCI6ODk0NCwiYnl0ZUxlbmd0aCI6Mjg4fSx7ImJ1ZmZlciI6MCwiYnl0ZU9mZnNldCI6OTIzMiwiYnl0ZUxlbmd0aCI6OTZ9LHsiYnVmZmVyIjowLCJieXRlT2Zmc2V0Ijo5MzI4LCJieXRlTGVuZ3RoIjoxMjk2fSx7ImJ1ZmZlciI6MCwiYnl0ZU9mZnNldCI6MTA2MjQsImJ5dGVMZW5ndGgiOjg2NH0seyJidWZmZXIiOjAsImJ5dGVPZmZzZXQiOjExNDg4LCJieXRlTGVuZ3RoIjoyODh9LHsiYnVmZmVyIjowLCJieXRlT2Zmc2V0IjoxMTc3NiwiYnl0ZUxlbmd0aCI6OTZ9LHsiYnVmZmVyIjowLCJieXRlT2Zmc2V0IjoxMTg3MiwiYnl0ZUxlbmd0aCI6OTZ9LHsiYnVmZmVyIjowLCJieXRlT2Zmc2V0IjoxMTk2OCwiYnl0ZUxlbmd0aCI6MzJ9LHsiYnVmZmVyIjowLCJieXRlT2Zmc2V0IjoxMjAwMCwiYnl0ZUxlbmd0aCI6OTZ9LHsiYnVmZmVyIjowLCJieXRlT2Zmc2V0IjoxMjA5NiwiYnl0ZUxlbmd0aCI6NTI4fSx7ImJ1ZmZlciI6MCwiYnl0ZU9mZnNldCI6MTI2MjQsImJ5dGVMZW5ndGgiOjMzNn0seyJidWZmZXIiOjAsImJ5dGVPZmZzZXQiOjEyOTYwLCJieXRlTGVuZ3RoIjoxMTJ9LHsiYnVmZmVyIjowLCJieXRlT2Zmc2V0IjoxMzA3MiwiYnl0ZUxlbmd0aCI6Mjg4fSx7ImJ1ZmZlciI6MCwiYnl0ZU9mZnNldCI6MTMzNjAsImJ5dGVMZW5ndGgiOjk2fSx7ImJ1ZmZlciI6MCwiYnl0ZU9mZnNldCI6MTM0NTYsImJ5dGVMZW5ndGgiOjk2fSx7ImJ1ZmZlciI6MCwiYnl0ZU9mZnNldCI6MTM1NTIsImJ5dGVMZW5ndGgiOjI4OH0seyJidWZmZXIiOjAsImJ5dGVPZmZzZXQiOjEzODQwLCJieXRlTGVuZ3RoIjoyODh9LHsiYnVmZmVyIjowLCJieXRlT2Zmc2V0IjoxNDEyOCwiYnl0ZUxlbmd0aCI6NDgwfSx7ImJ1ZmZlciI6MCwiYnl0ZU9mZnNldCI6MTQ2MDgsImJ5dGVMZW5ndGgiOjI4OH0seyJidWZmZXIiOjAsImJ5dGVPZmZzZXQiOjE0ODk2LCJieXRlTGVuZ3RoIjo5Nn0seyJidWZmZXIiOjAsImJ5dGVPZmZzZXQiOjE0OTkyLCJieXRlTGVuZ3RoIjoyODh9LHsiYnVmZmVyIjowLCJieXRlT2Zmc2V0IjoxNTI4MCwiYnl0ZUxlbmd0aCI6Mjg4fSx7ImJ1ZmZlciI6MCwiYnl0ZU9mZnNldCI6MTU1NjgsImJ5dGVMZW5ndGgiOjI4OH0seyJidWZmZXIiOjAsImJ5dGVPZmZzZXQiOjE1ODU2LCJieXRlTGVuZ3RoIjo5Nn0seyJidWZmZXIiOjAsImJ5dGVPZmZzZXQiOjE1OTUyLCJieXRlTGVuZ3RoIjo5Nn0seyJidWZmZXIiOjAsImJ5dGVPZmZzZXQiOjE2MDQ4LCJieXRlTGVuZ3RoIjo5Nn0seyJidWZmZXIiOjAsImJ5dGVPZmZzZXQiOjE2MTQ0LCJieXRlTGVuZ3RoIjo5Nn0seyJidWZmZXIiOjAsImJ5dGVPZmZzZXQiOjE2MjQwLCJieXRlTGVuZ3RoIjo5Nn0seyJidWZmZXIiOjAsImJ5dGVPZmZzZXQiOjE2MzM2LCJieXRlTGVuZ3RoIjo5Nn0seyJidWZmZXIiOjAsImJ5dGVPZmZzZXQiOjE2NDMyLCJieXRlTGVuZ3RoIjo5Nn0seyJidWZmZXIiOjAsImJ5dGVPZmZzZXQiOjE2NTI4LCJieXRlTGVuZ3RoIjozMn0seyJidWZmZXIiOjAsImJ5dGVPZmZzZXQiOjE2NTYwLCJieXRlTGVuZ3RoIjo5Nn0seyJidWZmZXIiOjAsImJ5dGVPZmZzZXQiOjE2NjU2LCJieXRl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9OAuQc3MDD/AWxxBZRkqQc3MDD+TOhJBZRkqQc3MDD+TOhJB9OAuQc3MDD/AWxxBgqgzQQAAAADAWxxB9OAuQQAAAACTOhJB9OAuQQAAAACTOhJBgqgzQQAAAADAWxxBgqgzQc3MjD/AWxxB9OAuQc3MjD+TOhJB9OAuQc3MjD+TOhJBgqgzQc3MjD/AWxxBEXA4QQAAAADAWxxBgqgzQQAAAACTOhJBgqgzQQAAAACTOhJBEXA4QQAAAADAWxxBEXA4QTMz0z/AWxxBgqgzQTMz0z+TOhJBgqgzQTMz0z+TOhJBEXA4QTMz0z/AWxxBoDc9QQAAAADAWxxBEXA4QQAAAACTOhJBEXA4QQAAAACTOhJBoDc9QQAAAADAWxxBoDc9Qc3MDEDAWxxBEXA4Qc3MDECTOhJBEXA4Qc3MDECTOhJBoDc9Qc3MDEDAWxxBLv9BQQAAAADAWxxBoDc9QQAAAACTOhJBoDc9QQAAAACTOhJBLv9BQQAAAADAWxxBLv9BQQAAMEDAWxxBoDc9QQAAMECTOhJBoDc9QQAAMECTOhJBLv9BQQAAMEC+qpH/vqqR/76qkf++qpH/vqqR/76qkf++qpH/vqqR/76qkf++qpH/vqqR/76qkf++qpH/vqqR/76qkf++qpH/vqqR/76qkf++qpH/vqqR/76qkf++qpH/vqqR/76qkf++qpH/vqqR/76qkf++qpH/vqqR/76qkf++qpH/vqqR/76qkf++qpH/vqqR/76qkf++qpH/vqqR/76qkf++qpH/</script>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/environments/RoomEnvironment.js"></script>
+<script>
+(() => {
+  // ---------- data (plan.json is the source of truth; GLB is built from it) ----------
+  const PLAN = JSON.parse(document.getElementById("plan-data").textContent);
+  const VIEW = JSON.parse(document.getElementById("viewer-data").textContent);
+  const STAGING = JSON.parse(document.getElementById("staging-data").textContent);   // null = unfurnished
+  const EYE = 1.6, RADIUS = 0.3, WALK = 1.6, RUN = 3.2;
+  const ROOM_NAMES = { bedroom: "Bedroom", bathroom: "Bathroom", living: "Living room", kitchen: "Kitchen",
+    dining: "Dining", entry: "Entrance", hallway: "Hallway", storage: "Storage", closet: "Closet",
+    laundry: "Laundry", sauna: "Sauna", technical: "Technical room", room: "Room", outdoor: "Outdoor",
+    garage: "Car port", other: "Hall / other" };
+
+  // plan (x, y) meters, z up  ->  three.js (x, height, -y)
+  const toWorld = (x, y, h) => new THREE.Vector3(x, h, -y);
+  const floorBase = level => level * VIEW.storey_height_m;
+
+  // ---------- HUD text ----------
+  const L = VIEW.listing || {};
+  document.getElementById("listing-id").textContent = [L.property_id, PLAN.source_ref].filter(Boolean).join(" · ");
+  document.getElementById("listing-title").textContent = L.title || PLAN.plan_id;
+  document.getElementById("listing-meta").textContent = [L.location, L.area_sqm && `${L.area_sqm} m²`,
+    L.bedrooms != null && `${L.bedrooms} bed`, L.bathrooms != null && `${L.bathrooms} bath`].filter(Boolean).join(" · ");
+  document.getElementById("warning-text").textContent = VIEW.source_warning;
+
+  // ---------- three.js setup ----------
+  const stage = document.getElementById("stage");
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  stage.appendChild(renderer.domElement);
+
+  const scene = new THREE.Scene();
+  const sky = new THREE.Color(getComputedStyle(document.documentElement).getPropertyValue("--scene-bg").trim() || "#dfe6ea");
+  scene.background = sky;
+  const camera = new THREE.PerspectiveCamera(70, 1, 0.05, 500);
+  camera.rotation.order = "YXZ";
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x8a8f86, 0.95));
+  const sun = new THREE.DirectionalLight(0xffffff, 0.55);
+  sun.position.set(20, 40, 15);
+  scene.add(sun);
+
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 400),
+    new THREE.MeshStandardMaterial({ color: 0xb9c2b3, roughness: 1 }));
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.y = floorBase(Math.min(...PLAN.floors.map(f => f.level))) - 0.06;
+  scene.add(ground);
+
+  // floors: one group per level, holding GLB meshes + ceilings + per-room groups (for interior staging later)
+  const levels = {};
+  PLAN.floors.forEach(f => {
+    const g = new THREE.Group(); g.name = `level_${f.level}`;
+    const ceilings = new THREE.Group(); ceilings.name = "ceilings";
+    const rooms = new THREE.Group(); rooms.name = "rooms";   // furniture goes in rooms/<room id>
+    g.add(ceilings, rooms);
+    f.rooms.forEach(r => { const rg = new THREE.Group(); rg.name = r.id; rg.userData = { type: r.type, area_sqm: r.area_sqm }; rooms.add(rg); });
+    levels[f.level] = { floor: f, group: g, walls: [], furniture: [], ceilings, rooms };
+    scene.add(g);
+  });
+
+  // ceilings from room polygons (walk mode only)
+  const ceilingMat = new THREE.MeshStandardMaterial({ color: 0xf4f3ef, emissive: 0x5c5b57, roughness: 1, side: THREE.DoubleSide });
+  PLAN.floors.forEach(f => f.rooms.filter(r => r.type !== "outdoor" && r.type !== "garage").forEach(r => {
+    const shape = new THREE.Shape(r.polygon.map(([x, y]) => new THREE.Vector2(x, y)));
+    const mesh = new THREE.Mesh(new THREE.ShapeGeometry(shape), ceilingMat);
+    mesh.rotation.x = -Math.PI / 2;          // shape (x, y) -> world (x, -y) on the horizontal plane
+    mesh.position.y = floorBase(f.level) + VIEW.wall_height_m;
+    levels[f.level].ceilings.add(mesh);
+  }));
+
+  // ---------- furniture from staging.json ----------
+  // item (x, y) is the footprint centre; rotation_deg is counter-clockwise in the plan = +Y rotation here.
+  // Every item gets a box of its real size: it is what the visitor collides with, and what is
+  // shown until (or unless) the item's GLB model loads. Models come ready-made from
+  // data/scripts/build_furniture_models.py: metres, centred, standing on y = 0, front toward +z.
+  const furnitureEdge = new THREE.LineBasicMaterial({ color: 0x2f2b27, transparent: true, opacity: 0.4 });
+  // soft studio reflections for furniture only (leather, varnish, metal look flat without them)
+  const furnitureEnv = THREE.RoomEnvironment
+    ? new THREE.PMREMGenerator(renderer).fromScene(new THREE.RoomEnvironment(), 0.04).texture : null;
+  const holders = {};     // catalog id -> [{ holder, box }]
+  ((STAGING && STAGING.items) || []).forEach(it => {
+    const lv = levels[it.level]; if (!lv) return;
+    const holder = new THREE.Group();
+    holder.name = it.id; holder.userData = it;
+    holder.position.copy(toWorld(it.x, it.y, floorBase(it.level)));
+    holder.rotation.y = it.rotation_deg * Math.PI / 180;
+    const geo = new THREE.BoxGeometry(it.width_m, it.height_m, it.depth_m);
+    const [r, g, b] = it.color || [170, 160, 150];
+    const box = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
+      color: new THREE.Color(r / 255, g / 255, b / 255).convertSRGBToLinear(), roughness: 0.9, metalness: 0 }));
+    box.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo), furnitureEdge));
+    box.position.y = it.height_m / 2;
+    holder.add(box);
+    (lv.rooms.getObjectByName(it.room_id) || lv.rooms).add(holder);
+    lv.furniture.push(box);
+    (holders[it.catalog_id] = holders[it.catalog_id] || []).push({ holder, box });
+  });
+  Object.entries((STAGING && STAGING.models) || {}).forEach(([catalogId, glb]) => {
+    const data = Uint8Array.from(atob(glb), c => c.charCodeAt(0));
+    new THREE.GLTFLoader().parse(data.buffer, "", gltf => {
+      gltf.scene.traverse(o => {
+        if (!o.isMesh) return;
+        // low-poly kit models carry no normals: shade them flat. Textured models keep their own.
+        if (!o.geometry.attributes.normal) { o.material.flatShading = true; o.material.roughness = 0.85; o.material.metalness = 0; }
+        if (furnitureEnv) { o.material.envMap = furnitureEnv; o.material.envMapIntensity = 0.55; }
+        o.material.needsUpdate = true;
+      });
+      (holders[catalogId] || []).forEach(({ holder, box }) => {
+        holder.add(gltf.scene.clone(true));
+        box.visible = false;      // hidden, still the collider (the raycaster ignores visibility)
+      });
+    }, err => console.error("furniture model failed, keeping the box:", catalogId, err));
+  });
+
+  // ---------- load the GLB ----------
+  const b64 = document.getElementById("glb-data").textContent.trim();
+  const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+  const glbMat = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.92, metalness: 0, side: THREE.DoubleSide });
+  new THREE.GLTFLoader().parse(bytes.buffer, "", gltf => {
+    const meshes = [];
+    gltf.scene.traverse(o => { if (o.isMesh) meshes.push(o); });
+    gltf.scene.updateMatrixWorld(true);
+    meshes.forEach(o => {
+      const name = o.name.startsWith("L") ? o.name : (o.parent && o.parent.name) || "";
+      const m = name.match(/^L(-?\d+)_/);
+      const lv = levels[m ? +m[1] : PLAN.floors[0].level];
+      if (!o.geometry.attributes.normal) o.geometry.computeVertexNormals();
+      const col = o.geometry.attributes.color;
+      if (col) {   // GLB stores sRGB bytes; three.js expects linear vertex colors
+        const lin = new Float32Array(col.count * col.itemSize);
+        for (let i = 0; i < col.count; i++) {
+          lin[i * col.itemSize] = Math.pow(col.getX(i), 2.2);
+          lin[i * col.itemSize + 1] = Math.pow(col.getY(i), 2.2);
+          lin[i * col.itemSize + 2] = Math.pow(col.getZ(i), 2.2);
+          if (col.itemSize === 4) lin[i * 4 + 3] = col.getW(i);
+        }
+        o.geometry.setAttribute("color", new THREE.BufferAttribute(lin, col.itemSize));
+      }
+      o.material = glbMat;
+      o.applyMatrix4(o.parent.matrixWorld);   // bake transforms before re-parenting
+      lv.group.add(o);
+      if (name.includes("_wall_") || name.includes("_fixture_")) lv.walls.push(o);   // built-ins are solid too
+    });
+    setFloor(VIEW.start_level);
+    setMode("overview");
+    renderer.setAnimationLoop(tick);
+  }, err => {
+    const e = document.getElementById("error");
+    e.hidden = false;
+    e.textContent = "The 3D model could not be loaded. Rebuild it with build_walkthrough.py and reopen this page.";
+    console.error(err);
+  });
+
+  // ---------- state ----------
+  let level = VIEW.start_level, mode = "overview";
+  let yaw = 0, pitch = 0;
+  const pos = new THREE.Vector3();
+  const keys = new Set();
+  const orbit = { yaw: -0.6, dist: 1, target: new THREE.Vector3() };
+
+  // furniture on / off (only when the page carries a staging)
+  let furnished = true;
+  const furnitureBtn = document.getElementById("toggle-furniture");
+  document.getElementById("furniture-seg").hidden = !(STAGING && STAGING.items.length);
+  furnitureBtn.addEventListener("click", () => {
+    furnished = !furnished;
+    furnitureBtn.setAttribute("aria-pressed", String(furnished));
+    Object.values(levels).forEach(v => { v.rooms.visible = furnished; });
+  });
+
+  // floor buttons (only when there is more than one floor)
+  const floorsEl = document.getElementById("floors");
+  if (PLAN.floors.length > 1) {
+    PLAN.floors.forEach(f => {
+      const b = document.createElement("button");
+      b.textContent = f.level < 0 ? `B${-f.level}` : f.level === 0 ? "Ground" : `Floor ${f.level}`;
+      b.dataset.level = f.level;
+      b.addEventListener("click", () => setFloor(f.level));
+      floorsEl.appendChild(b);
+    });
+  } else floorsEl.hidden = true;
+
+  const floorInfo = l => VIEW.floors.find(f => f.level === l);
+  function setFloor(l) {
+    level = l;
+    Object.values(levels).forEach(v => { v.group.visible = v.floor.level <= l; });
+    floorsEl.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.level === l)));
+    const fi = floorInfo(l);
+    pos.copy(toWorld(fi.spawn[0], fi.spawn[1], floorBase(l) + EYE));
+    yaw = fi.spawn_yaw || 0; pitch = 0;
+    orbit.target.copy(toWorld(fi.center[0], fi.center[1], floorBase(l)));
+    orbit.dist = Math.max(fi.extent * 1.25, 8);
+    buildTags();
+    updateRoom(true);
+  }
+
+  // ---------- modes ----------
+  const help = document.getElementById("help"), cross = document.getElementById("crosshair");
+  const startWrap = document.getElementById("start-wrap");
+  const isTouch = matchMedia("(pointer: coarse)").matches;
+  function setMode(m) {
+    mode = m;
+    document.getElementById("mode-overview").setAttribute("aria-pressed", String(m === "overview"));
+    document.getElementById("mode-walk").setAttribute("aria-pressed", String(m === "walk"));
+    Object.values(levels).forEach(v => { v.ceilings.visible = m === "walk"; });
+    startWrap.hidden = m === "walk";
+    cross.hidden = m !== "walk";
+    help.hidden = m !== "walk";
+    help.textContent = isTouch ? "Drag left side to move · drag right side to look"
+      : "Click the view to look with the mouse · W A S D or arrows to move · Shift to run · Esc to release";
+    tagsEl.forEach(t => { t.el.hidden = m !== "overview"; });
+    if (m === "overview" && document.pointerLockElement) document.exitPointerLock();
+    updateRoom(true);
+  }
+  document.getElementById("mode-overview").addEventListener("click", () => setMode("overview"));
+  document.getElementById("mode-walk").addEventListener("click", () => setMode("walk"));
+  document.getElementById("start").addEventListener("click", () => { setMode("walk"); tryLock(); });
+
+  function tryLock() {
+    if (isTouch || !renderer.domElement.requestPointerLock) return;
+    try { const p = renderer.domElement.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (e) {}
+  }
+
+  // ---------- input ----------
+  addEventListener("keydown", e => {
+    if (e.target.tagName === "BUTTON" && (e.code === "Space" || e.code === "Enter")) return;
+    keys.add(e.code);
+    if (mode === "walk" && e.code.startsWith("Arrow")) e.preventDefault();
+  });
+  addEventListener("keyup", e => keys.delete(e.code));
+  addEventListener("blur", () => keys.clear());
+
+  const look = (dx, dy, k) => { yaw -= dx * k; pitch = Math.max(-1.3, Math.min(1.3, pitch - dy * k)); };
+  document.addEventListener("mousemove", e => {
+    if (mode === "walk" && document.pointerLockElement === renderer.domElement) look(e.movementX, e.movementY, 0.0022);
+  });
+
+  // pointer drag: overview = orbit; walk without pointer lock = look (right half) / move (left half on touch)
+  const drags = new Map();
+  const touchMove = { x: 0, y: 0 };
+  stage.addEventListener("pointerdown", e => {
+    if (mode === "walk" && !isTouch && document.pointerLockElement !== renderer.domElement) tryLock();
+    drags.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY,
+      role: mode === "walk" && isTouch && e.clientX < innerWidth / 2 ? "move" : "look" });
+    stage.setPointerCapture(e.pointerId);
+  });
+  stage.addEventListener("pointermove", e => {
+    const d = drags.get(e.pointerId); if (!d) return;
+    const dx = e.clientX - d.x, dy = e.clientY - d.y; d.x = e.clientX; d.y = e.clientY;
+    if (mode === "overview") { orbit.yaw -= dx * 0.006; return; }
+    if (d.role === "look" && document.pointerLockElement !== renderer.domElement) look(dx, dy, 0.005);
+    if (d.role === "move") {
+      touchMove.x = Math.max(-1, Math.min(1, (e.clientX - d.sx) / 60));
+      touchMove.y = Math.max(-1, Math.min(1, (e.clientY - d.sy) / 60));
+    }
+  });
+  const endDrag = e => { const d = drags.get(e.pointerId); if (d && d.role === "move") touchMove.x = touchMove.y = 0; drags.delete(e.pointerId); };
+  stage.addEventListener("pointerup", endDrag);
+  stage.addEventListener("pointercancel", endDrag);
+  stage.addEventListener("wheel", e => {
+    if (mode !== "overview") return;
+    e.preventDefault();
+    orbit.dist = Math.max(4, Math.min(120, orbit.dist * (1 + Math.sign(e.deltaY) * 0.1)));
+  }, { passive: false });
+
+  // ---------- collision: rays at knee and chest height against this floor's walls and built-ins ----------
+  // knee ray is blocked by window sills, both rays pass through door openings
+  // furniture gets one more ray at shin height so low pieces (coffee table) block too
+  const ray = new THREE.Raycaster();
+  function blocked(dir, dist) {
+    const lv = levels[level];
+    for (const h of [0.15, 0.45, 1.5]) {
+      ray.set(new THREE.Vector3(pos.x, floorBase(level) + h, pos.z), dir);
+      ray.far = dist + RADIUS;
+      if (h > 0.2 && ray.intersectObjects(lv.walls, false).length) return true;
+      if (furnished && ray.intersectObjects(lv.furniture, false).length) return true;
+    }
+    return false;
+  }
+  function stepAxis(v) {
+    const d = v.length(); if (d < 1e-6) return;
+    const dir = v.clone().normalize();
+    if (!blocked(dir, d)) pos.add(v);
+  }
+
+  // ---------- current room ----------
+  function inPoly(x, y, poly) {
+    let inside = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const [xi, yi] = poly[i], [xj, yj] = poly[j];
+      if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
+  }
+  let lastRoom = null;
+  const floorLabel = l => l < 0 ? `Basement ${-l}` : l === 0 ? "Ground floor" : `Floor ${l}`;
+  function updateRoom(force) {
+    const nameEl = document.getElementById("room-name"), metaEl = document.getElementById("room-meta");
+    document.getElementById("room-floor").textContent = (PLAN.floors.length > 1 ? floorLabel(level) + " · " : "") +
+      (mode === "walk" ? "You are in" : "Overview");
+    if (mode !== "walk") {
+      lastRoom = null;
+      const f = levels[level].floor;
+      nameEl.textContent = `${PLAN.total_area_sqm.toFixed(0)} m² plan`;
+      metaEl.textContent = `${f.rooms.filter(r => r.type === "bedroom").length} bedrooms on this floor · ${PLAN.floors.length} floor${PLAN.floors.length > 1 ? "s" : ""}`;
+      return;
+    }
+    const x = pos.x, y = -pos.z;
+    const r = levels[level].floor.rooms.find(r => inPoly(x, y, r.polygon)) || null;
+    if (r === lastRoom && !force) return;
+    lastRoom = r;
+    nameEl.textContent = r ? ROOM_NAMES[r.type] || r.type : "Between rooms";
+    metaEl.textContent = r ? `${r.area_sqm.toFixed(1)} m²` : "";
+  }
+
+  // ---------- room tags in overview ----------
+  const tagsEl = [];
+  function buildTags() {
+    tagsEl.forEach(t => t.el.remove()); tagsEl.length = 0;
+    floorInfo(level).rooms.forEach(r => {
+      if (r.area_sqm < 3) return;
+      const el = document.createElement("div");
+      el.className = "tag";
+      el.innerHTML = `${ROOM_NAMES[r.type] || r.type}<small>${r.area_sqm.toFixed(1)} m²</small>`;
+      el.hidden = mode !== "overview";
+      document.body.appendChild(el);
+      tagsEl.push({ el, p: toWorld(r.label[0], r.label[1], floorBase(level) + 0.1) });
+    });
+  }
+  const v3 = new THREE.Vector3();
+  function placeTags() {
+    tagsEl.forEach(t => {
+      v3.copy(t.p).project(camera);
+      t.el.style.left = `${(v3.x * 0.5 + 0.5) * innerWidth}px`;
+      t.el.style.top = `${(-v3.y * 0.5 + 0.5) * innerHeight}px`;
+    });
+  }
+
+  // ---------- loop ----------
+  function resize() {
+    const w = stage.clientWidth, h = stage.clientHeight;
+    renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+  }
+  addEventListener("resize", resize); resize();
+
+  const clock = new THREE.Clock();
+  const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function tick() {
+    const dt = Math.min(clock.getDelta(), 0.25);
+    if (mode === "walk") {
+      let f = 0, s = 0;
+      if (keys.has("KeyW") || keys.has("ArrowUp")) f += 1;
+      if (keys.has("KeyS") || keys.has("ArrowDown")) f -= 1;
+      if (keys.has("KeyD")) s += 1;
+      if (keys.has("KeyA")) s -= 1;
+      if (keys.has("ArrowLeft")) yaw += 1.8 * dt;
+      if (keys.has("ArrowRight")) yaw -= 1.8 * dt;
+      f -= touchMove.y; s += touchMove.x;
+      const speed = (keys.has("ShiftLeft") || keys.has("ShiftRight") ? RUN : WALK) * dt;
+      const fx = -Math.sin(yaw), fz = -Math.cos(yaw);       // forward
+      const mx = (fx * f + -fz * s) * speed, mz = (fz * f + fx * s) * speed;
+      // sub-steps of <= 10 cm keep collision exact on slow devices
+      const n = Math.max(1, Math.ceil(Math.hypot(mx, mz) / 0.1));
+      for (let i = 0; i < n; i++) { stepAxis(new THREE.Vector3(mx / n, 0, 0)); stepAxis(new THREE.Vector3(0, 0, mz / n)); }
+      pos.y = floorBase(level) + EYE;
+      camera.position.copy(pos);
+      camera.rotation.set(pitch, yaw, 0);
+      updateRoom(false);
+    } else {
+      if (!reduceMotion && !drags.size) orbit.yaw += dt * 0.05;
+      const el = 0.95, dist = orbit.dist * Math.pow(Math.max(1, 1 / camera.aspect), 0.8);  // narrow screens: back off
+      camera.position.set(orbit.target.x + dist * Math.cos(el) * Math.sin(orbit.yaw),
+                          orbit.target.y + dist * Math.sin(el),
+                          orbit.target.z + dist * Math.cos(el) * Math.cos(orbit.yaw));
+      camera.lookAt(orbit.target);
+      placeTags();
+    }
+    renderer.render(scene, camera);
+  }
+
+  // hook for other scripts: furniture lives in roomGroup(<room id>), one mesh per staging item id
+  window.smartsemsar = { plan: PLAN, staging: STAGING, scene, levels, roomGroup: id => scene.getObjectByName(id),
+                         state: () => ({ x: pos.x, y: -pos.z, yaw, level, mode }) };
+})();
+</script>
+
+</body>
+</html>

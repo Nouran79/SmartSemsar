@@ -740,6 +740,44 @@ st.set_page_config(page_title="Smart Semsar - AI Platform", page_icon="🏡", la
 # إضافة مسار جذر المشروع للـ sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+# smart_semsar_ui فيه هو كمان فولدر views، فلما Streamlit يعيد التحميل بعد تعديل ملف ممكن يجيبه بدل views بتاعتنا:
+# فولدر frontend يبقى الأول في الـ path، ولو views اللي متحملة مش بتاعتنا نشيلها تتحمل من جديد
+FRONTEND_DIR = os.path.dirname(os.path.abspath(__file__))
+if sys.path[0] != FRONTEND_DIR:
+    sys.path.insert(0, FRONTEND_DIR)
+_views = sys.modules.get("views")
+if _views is not None and not any(p.startswith(FRONTEND_DIR) for p in getattr(_views, "__path__", [])):
+    for _name in [m for m in sys.modules if m == "views" or m.startswith("views.")]:
+        del sys.modules[_name]
+
+# Streamlit بيعيد تحميل الملف اللي اتعدل في الجلسة اللي كانت فاتحة بس؛ تاب جديد كان بياخد النسخة القديمة
+# (وأخطاء زي tokenize.TokenError). لو الملف اللي على الهارد أحدث من اللي متحمل، نحمله من جديد
+for _name in ("views.chat_view", "views.splash_screen"):
+    _mod = sys.modules.get(_name)
+    if _mod is not None and os.path.getmtime(_mod.__file__) > getattr(_mod, "LOADED_AT", 0):
+        del sys.modules[_name]
+
+
+# تحميل الجراف في الخلفية من أول ما الأبلكيشن يفتح (بياخد حوالي 25 ثانية: torch + موديل المطابقة)،
+# فلما المستخدم يدوس ابدأ يكون جاهز. لو لسه بيتحمل، الـ import في chat_view بيستنى نفس التحميل مش بيبدأ من الأول.
+@st.cache_resource
+def preload_backend():
+    import threading
+    from dotenv import load_dotenv, find_dotenv
+
+    load_dotenv(find_dotenv())      # مفاتيح Groq/Gemini لازم تبقى موجودة قبل تحميل الجراف
+
+    def load():
+        try:
+            import backend.agents.semsar_graph  # noqa: F401
+        except Exception:
+            pass                    # chat_view بيعرض الخطأ لما يحمله هو
+    threading.Thread(target=load, daemon=True).start()
+    return True
+
+
+preload_backend()
+
 # 2. إدارة حالة التنقل
 if "started_journey" not in st.session_state:
     st.session_state.started_journey = False

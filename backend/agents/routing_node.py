@@ -17,7 +17,7 @@ from typing import List, Optional
 from dotenv import load_dotenv, find_dotenv
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parent
+PROJECT_ROOT = Path(__file__).resolve().parents[2]      # SmartSemsar/ (فيه .env)، مش backend/agents
 load_dotenv(PROJECT_ROOT / ".env")
 
 class MacroIntentClassifier(BaseModel):
@@ -45,8 +45,16 @@ class MacroIntentClassifier(BaseModel):
         description="الخيارات الأربعة الرئيسية للـ UI"
     )
 
-llm = ChatGroq(model_name="openai/gpt-oss-20b", temperature=0)
-structured_orchestrator = llm.with_structured_output(MacroIntentClassifier)
+_structured_orchestrator = None
+
+
+def get_structured_orchestrator():
+    """الموديل بيتعمل أول ما يتطلب مش وقت الـ import، فالملف بيتحمل حتى لو GROQ_API_KEY مش موجود (التستات مثلاً)"""
+    global _structured_orchestrator
+    if _structured_orchestrator is None:
+        llm = ChatGroq(model_name="openai/gpt-oss-20b", temperature=0)
+        _structured_orchestrator = llm.with_structured_output(MacroIntentClassifier)
+    return _structured_orchestrator
 
 ORCHESTRATOR_PROMPT = """
 You are the primary Orchestrator (Supervisor Agent) for "Smart Semsar", an AI-powered PropTech platform in Egypt.
@@ -184,7 +192,7 @@ def supervisor_router_node(state: AgentState) -> dict:
         has_sketch=has_sketch
     )
 
-    result = structured_orchestrator.invoke(formatted_prompt)
+    result = get_structured_orchestrator().invoke(formatted_prompt)
 
     print(f"🎯 Detected Path: {result.macro_intent}")
     print(f"💡 Reason: {result.reasoning}")

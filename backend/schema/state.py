@@ -31,6 +31,7 @@ class CustomerRequirements(BaseModel):
     bedrooms: Optional[int] = Field(default=None, description="Bedroom count")
     property_type: Optional[Literal["apartment", "villa", "duplex", "studio", "townhouse", "unknown"]] = Field(default="unknown", description="Type of property")
     purpose: Optional[Literal["living", "investment", "unknown"]] = Field(default="unknown", description="Purpose of Searching for Apartment")
+    deal_type: Optional[Literal["rent", "buy", "unknown"]] = Field(default="unknown", description="Rent (إيجار) or buy (تمليك/شراء)")
     # style_preference: Optional[str] = Field(default=None, description="Design style e.g., Modern, Classic")
     notes: Optional[str] = Field(default=None, description="Notes from customer inputs regards the property")
     missing_fields: list[str] = Field(default_factory=list)

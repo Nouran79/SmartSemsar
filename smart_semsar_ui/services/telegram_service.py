@@ -7,6 +7,7 @@ appointment confirmations directly to a customer's verified Telegram chat.
 from __future__ import annotations
 
 import html
+import json
 import logging
 import os
 import secrets
@@ -190,6 +191,49 @@ def get_confirmed_booking_for_property(
             if is_confirmed_booking(b, property_id):
                 return b
     return None
+
+
+# username -> chat id of everyone who has written to the bot (Telegram keeps updates only ~24 h)
+KNOWN_USERS_FILE = Path(__file__).resolve().parents[2] / "data" / "telegram_users.json"
+
+
+def _known_users() -> dict[str, int]:
+    try:
+        return json.loads(KNOWN_USERS_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def find_chat_by_username(username: str, bot_token: str | None = None) -> dict[str, Any]:
+    """The chat id of a Telegram username, so the bot can message that person.
+
+    Telegram lets a bot write to someone only after they have opened it (Start) once, so a
+    username nobody has used with the bot yet comes back with needs_start=True. Every user seen
+    in the bot's updates is remembered, so after that one Start the username alone is enough.
+    """
+    name = (username or "").strip().lstrip("@").lower()
+    if not name:
+        return {"success": False, "error": "Telegram username is empty."}
+    token = bot_token or get_telegram_bot_token()
+    if not token:
+        return {"success": False, "error": "Telegram Bot Token is not configured."}
+
+    known = _known_users()
+    try:
+        data = requests.get(f"https://api.telegram.org/bot{token}/getUpdates", timeout=10).json()
+    except Exception as exc:
+        data = {"ok": False, "description": _sanitize_secret(str(exc), token)}
+    if data.get("ok"):
+        for upd in data.get("result", []):
+            chat = (upd.get("message") or upd.get("edited_message") or {}).get("chat", {})
+            if chat.get("type") == "private" and chat.get("username"):
+                known[chat["username"].lower()] = chat["id"]
+        KNOWN_USERS_FILE.parent.mkdir(parents=True, exist_ok=True)
+        KNOWN_USERS_FILE.write_text(json.dumps(known), encoding="utf-8")
+
+    if name in known:
+        return {"success": True, "chat_id": str(known[name])}
+    return {"success": False, "needs_start": True, "bot_username": get_telegram_bot_username(token)}
 
 
 def get_linking_token_info(token: str) -> dict[str, Any] | None:

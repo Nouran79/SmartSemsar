@@ -144,6 +144,7 @@ def test_junk_fields_fall_back_to_defaults():
 # ---------- failures ----------
 def test_missing_key_says_where_to_get_one(photo, monkeypatch):
     monkeypatch.delenv(vision_service.KEY_ENV, raising=False)
+    monkeypatch.delenv(vision_service.GROQ_KEY_ENV, raising=False)      # is_configured بيقبل Groq كمان
     monkeypatch.setattr(config, "ENV_FILES", [])
     assert not vision_service.is_configured()
     with pytest.raises(VisionError, match="aistudio.google.com"):
