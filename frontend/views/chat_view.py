@@ -50,6 +50,8 @@ from urllib.parse import quote
 MODELS_DIR = Path(__file__).resolve().parents[2] / "data" / "models"
 MODELS_PORT = int(os.environ.get("SMARTSEMSAR_MODELS_PORT", "7862"))
 VOICE_DIR = Path(__file__).resolve().parents[2] / "data" / "raw_calls"     # تسجيلات المستخدم من الشات
+DOWN_PAYMENT_PERCENT = 15      # مقدم التمليك (من سعر الشقة)؛ الباقي بيتقسط على المدة اللي العميل يختارها
+DEPOSIT_MONTHS = 2             # تأمين الإيجار: إيجار شهرين مقدم، بيرجع آخر مدة العقد لو مفيش تلفيات
 VOICE_DIR.mkdir(parents=True, exist_ok=True)
 
 
@@ -177,6 +179,37 @@ def render_telegram_link():
             st.error(f"❌ {res.get('error')}")
 
 
+def render_payment_details(price, is_rent, prop_info):
+    """إيجار: الإيجار الشهري، التأمين (DEPOSIT_MONTHS شهور من الإيجار)، أول دفعة وإجمالي السنة.
+    تمليك: المقدم DOWN_PAYMENT_PERCENT من السعر، والعميل بيختار يقسط الباقي على كام شهر"""
+    if is_rent:
+        st.markdown("### 🔑 تفاصيل الإيجار")
+        months = DEPOSIT_MONTHS
+        st.markdown(f"""
+        - **الإيجار الشهري:** EGP {price:,.0f}
+        - **التأمين (إيجار شهرين مقدم):** EGP {price * months:,.0f}، ويُسترد هذا المبلغ في نهاية مدة العقد في حال عدم وجود أي تلفيات.
+        - **أول دفعة عند الاستلام (التأمين فقط):** EGP {price * months:,.0f}
+        - **إجمالي الإيجار في السنة:** EGP {price * 12:,.0f}
+        """)
+        st.caption("الأرقام تقديرية؛ التأمين ومواعيد الدفع بتتحدد نهائي في العقد مع المالك.")
+        return
+
+    st.markdown("### 🧮 خطة التقسيط")
+    down_pct = DOWN_PAYMENT_PERCENT
+    st.markdown(f"**المقدم {down_pct}% من سعر الشقة:** EGP {price * down_pct / 100:,.0f}")
+    months = st.selectbox("هتقسط الباقي على كام شهر؟", [12, 24, 36, 48, 60, 72, 84, 96, 108, 120], index=4,
+                          format_func=lambda m: f"{m} شهر ({m // 12} سنين)" if m > 12 else "12 شهر (سنة)")
+    plan = calculate_installments(price, down_payment_percent=down_pct, years=months / 12, annual_interest_rate=0.0)
+    st.session_state["installment_plan"] = {**plan, "down_payment_percent": down_pct,
+                                            "years": months // 12, "annual_interest_rate": 0.0}
+    st.markdown(f"""
+    - **المبلغ المتبقي بعد المقدم:** EGP {plan['remaining']:,.0f}
+    - **القسط الشهري (على {months} شهر):** EGP {plan['monthly_installment']:,.0f} / شهرياً
+    """)
+    st.caption("الحساب من غير فوايد؛ خطط التقسيط الفعلية بتختلف من مطور للتاني.")
+
+
+
 def deliver_booking_report(prop_info):
     """التقرير بيتبعت بعد الحجز بس ومرة واحدة. لو تليجرام مكانش متربط وقت الحجز، بيتبعت أول ما يتربط"""
     booking = st.session_state.get("booking_data")
@@ -197,6 +230,7 @@ def send_report_to_telegram(prop_info):
     res = send_property_report(
         chat_id=chat_id, property_info=prop_info,
         customer_name=st.session_state.get("customer_name") or "Valued Customer",
+        installment_plan=st.session_state.get("installment_plan") if prop_info.get("deal_type") == "buy" else None,
         booking_data=st.session_state.get("booking_data"))
     if res.get("success"):
         return True, "✅ تم إرسال التقرير لتليجرام بنجاح!"
@@ -414,7 +448,7 @@ def render_chat_flow():
     if submit_button and user_query:
         st.session_state.messages.append({"role": "user", "content": user_query})
         st.session_state.show_checkout_page = False
-        
+
         with st.spinner("جاري المعالجة والبحث..."):
             try:
                 if current_state.tasks and any(task.interrupts for task in current_state.tasks):
@@ -499,6 +533,11 @@ def render_chat_flow():
         p_bedrooms = prop_field(current_prop, 'pf_bedrooms', 'bedrooms', default=3)
         p_area = prop_field(current_prop, 'pf_area_sqm', 'area_sqm', default=180)
 
+        # إيجار ولا تمليك: زي ما العميل قال؛ ولو مقالش، إيجار (كل الشقق اللي في الداتا إيجار)
+        deal_type = getattr(graph_values.get("customer_reqs"), "deal_type", None)
+        is_rent = deal_type != "buy"
+        price_label = "الإيجار الشهري" if is_rent else "السعر الإجمالي"
+
         # صندوق بيانات الشقة
         st.markdown(f"""
             <div style="
@@ -511,12 +550,13 @@ def render_chat_flow():
             ">
                 <h3 style="color: #aa771c; margin-top:0;">{p_title} (#{propID})</h3>
                 <p><b>الموقع:</b> {p_location} &nbsp;|&nbsp; <b>المساحة:</b> {p_area} متر مربع &nbsp;|&nbsp; <b>عدد الغرف:</b> {p_bedrooms}</p>
-                <h4 style="color: #2c2c2c;">السعر الإجمالي: EGP {p_price:,.0f}</h4>
+                <h4 style="color: #2c2c2c;">{price_label}: EGP {p_price:,.0f}</h4>
             </div>
         """, unsafe_allow_html=True)
 
         prop_info = {"id": str(propID), "title": p_title, "price": p_price, "location": p_location,
-                     "area_sqm": p_area, "bedrooms": p_bedrooms}
+                     "area_sqm": p_area, "bedrooms": p_bedrooms, "deal_type": "rent" if is_rent else "buy",
+                     "deposit_months": DEPOSIT_MONTHS}
 
         # ---- ربط تليجرام: المستخدم بيفتح البوت ويدوس Start، وإحنا بناخد الـ chat id من تليجرام نفسه ----
         render_telegram_link()
@@ -528,7 +568,7 @@ def render_chat_flow():
         col_btn1, col_btn2 = st.columns(2)
 
         with col_btn1:
-            if st.button("1- كشف خطة التقسيط", use_container_width=True):
+            if st.button("1- تفاصيل الإيجار والتأمين" if is_rent else "1- خطة التقسيط", use_container_width=True):
                 st.session_state["show_installment_plan"] = True
 
         with col_btn2:
@@ -583,16 +623,10 @@ def render_chat_flow():
                         deliver_booking_report(prop_info)
                     else:
                         st.error(f"❌ حدث خطأ أثناء الحجز: {res.get('error')}")
-        # عرض خطة التقسيط لو المستخدم ضغط عليها
+        # الإيجار: الإيجار الشهري والتأمين وأول دفعة. التمليك: مقدم ثابت والعميل بيختار مدة التقسيط
         if st.session_state.get("show_installment_plan", False):
             st.markdown("---")
-            st.markdown("### 🧮 تفاصيل خطة التقسيط المقترحة")
-            plan = calculate_installments(p_price, down_payment_percent=20.0, years=5, annual_interest_rate=0.0)
-            st.markdown(f"""
-            - **المقدم (20%):** EGP {plan.get('down_payment', 0):,.0f}
-            - **القسط الشهري (على 5 سنوات):** EGP {plan.get('monthly_installment', 0):,.0f} / شهرياً
-            - **المبلغ المتبقي:** EGP {plan.get('remaining', 0):,.0f}
-            """)
+            render_payment_details(p_price, is_rent, prop_info)
 
         st.markdown("---")
         if st.button("العودة إلى المعاينة ثلاثية الأبعاد 3D", type="secondary"):

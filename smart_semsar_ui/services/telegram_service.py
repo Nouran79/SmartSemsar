@@ -548,18 +548,32 @@ def format_property_report(
     if description:
         lines.append(f"• {b('Description:')} {esc(description)}")
 
-    lines.extend([
-        "",
-        f"🧮 {b('Estimated Payment Plan')}",
-        f"• {b('Down Payment:')} EGP {inst_data.get('down_payment', 0):,.0f} ({inst_data.get('down_payment_percent', 0):.0f}%)",
-        f"• {b('Duration:')} {inst_data.get('years', 0)} years",
-        f"• {b('Monthly Installment:')} EGP {inst_data.get('monthly_installment', 0):,.0f} / month",
-        f"• {b('Remaining Amount:')} EGP {inst_data.get('remaining', 0):,.0f}",
-        f"• {b('Total Interest:')} EGP {inst_data.get('total_interest', 0):,.0f}",
-        f"• {b('Estimated Total Cost:')} EGP {inst_data.get('total_cost', 0):,.0f}",
-        f"• {b('Interest Assumption:')} {inst_data.get('annual_interest_rate', 0):.1f}% flat annual rate",
-        f"ℹ️ {i('Note: This estimate uses simple flat interest on the remaining balance; actual developer payment plans may differ.')}",
-    ])
+    if property_info.get("deal_type") == "rent":
+        # إيجار: الإيجار الشهري والتأمين وأول دفعة، مش خطة تقسيط
+        months = int(property_info.get("deposit_months") or 2)
+        lines.extend([
+            "",
+            f"🔑 {b('Rent Details')}",
+            f"• {b('Monthly Rent:')} EGP {price:,.0f}",
+            f"• {b('Security Deposit:')} EGP {price * months:,.0f} ({months} months' rent in advance, "
+            f"refunded at the end of the lease if there is no damage)",
+            f"• {b('First Payment at handover (deposit only):')} EGP {price * months:,.0f}",
+            f"• {b('Yearly Rent:')} EGP {price * 12:,.0f}",
+            f"ℹ️ {i('Estimate only: the deposit and payment dates are set in the lease with the owner.')}",
+        ])
+    else:
+        lines.extend([
+            "",
+            f"🧮 {b('Estimated Payment Plan')}",
+            f"• {b('Down Payment:')} EGP {inst_data.get('down_payment', 0):,.0f} ({inst_data.get('down_payment_percent', 0):.0f}%)",
+            f"• {b('Duration:')} {inst_data.get('years', 0)} years",
+            f"• {b('Monthly Installment:')} EGP {inst_data.get('monthly_installment', 0):,.0f} / month",
+            f"• {b('Remaining Amount:')} EGP {inst_data.get('remaining', 0):,.0f}",
+            f"• {b('Total Interest:')} EGP {inst_data.get('total_interest', 0):,.0f}",
+            f"• {b('Estimated Total Cost:')} EGP {inst_data.get('total_cost', 0):,.0f}",
+            f"• {b('Interest Assumption:')} {inst_data.get('annual_interest_rate', 0):.1f}% flat annual rate",
+            f"ℹ️ {i('Note: This estimate uses simple flat interest on the remaining balance; actual developer payment plans may differ.')}",
+        ])
 
     if has_confirmed_booking and booking_data is not None:
         b_date = booking_data.get("date", "N/A")
